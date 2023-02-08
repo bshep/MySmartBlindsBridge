@@ -9,18 +9,18 @@ class blind
 {
 private:
     // Blind Data
-    String *_mac;
+    char _mac[18];
     byte _key[6];
-    String *_name;
+    char _name[20];
     int _angle;
     int _newAngle; //Used when updating blind
 
 
     // UUIDs to control the blinds
-    String _KEY_UUID =     "00001409-1212-efde-1600-785feabcd123";
-    String _ANGLE_UUID =   "00001403-1212-efde-1600-785feabcd123";
-    String _SERVICE_UUID = "00001400-1212-efde-1600-785feabcd123";
-    String _NAME_UUID =    "00001401-1212-efde-1600-785feabcd123";
+    std::string _KEY_UUID =     "00001409-1212-efde-1600-785feabcd123";
+    std::string _ANGLE_UUID =   "00001403-1212-efde-1600-785feabcd123";
+    std::string _SERVICE_UUID = "00001400-1212-efde-1600-785feabcd123";
+    std::string _NAME_UUID =    "00001401-1212-efde-1600-785feabcd123";
 
     BLEClient*  _pClient;
 
@@ -30,11 +30,11 @@ private:
     bool isConnected();
     void unlock();
 public:
-    blind(String mac_addr, byte*key);
+    blind(char *mac_addr, byte *key);
     ~blind();
-    String *mac();
-    String *key();
-    String *name();
+    char *mac();
+    byte *key();
+    char *name();
     void refresh();
 
     void setAngle(int newAngle);

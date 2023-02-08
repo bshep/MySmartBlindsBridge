@@ -18,11 +18,11 @@
 #include "main.h"
 #include "blind.h"
 
-static String hostName = "msb1";
-String ssid;
-String passphrase;
+static char hostName[32] = "msb1";
+char ssid[32];
+char passphrase[64];
 
-static String BlindBLEName = "SmartBlind_DFU";
+static std::string BlindBLEName = "SmartBlind_DFU";
 
 int scanTime = 5; // In seconds
 BLEScan *pBLEScan;
@@ -46,7 +46,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
   void onResult(BLEAdvertisedDevice advertisedDevice)
   {
-
   }
 };
 
@@ -61,6 +60,8 @@ void recvMsg(uint8_t *data, size_t len)
   WebSerial.println(d);
   if (d == "REBOOT")
   {
+    WebSerial.println("REBOOTING");
+    delay(500);
     ESP.restart();
   }
 }
@@ -77,16 +78,15 @@ bool onRefreshBLEScan(void *args)
   return true;
 }
 
-
-
 bool onRefreshBlinds(void *args)
 {
-  if(BlindsRefreshNow) {
-    BlindsRefreshNow = false;
-  for (int i = 0; i < blindCount; i++)
+  if (BlindsRefreshNow)
   {
-    blindsList[i]->refresh();
-  }
+    BlindsRefreshNow = false;
+    for (int i = 0; i < blindCount; i++)
+    {
+      blindsList[i]->refresh();
+    }
   }
   return true;
 }
@@ -117,26 +117,32 @@ void readWIFIConfig()
     String currLine = wifiConfigFile.readStringUntil('\n');
     if (currLine.startsWith("SSID:"))
     {
-      ssid = decode_base64(currLine.substring(currLine.indexOf(":") + 1));
-      Serial.println("SSID: " + ssid);
+      decode_base64((const unsigned char *)currLine.substring(currLine.indexOf(":") + 1).c_str(), (unsigned char *)ssid);
+      // ssid = std::string(decode_base64(currLine.substring(currLine.indexOf(":") + 1)).c_str());
+      Serial.print("SSID: ");
+      Serial.println(ssid);
     }
 
     if (currLine.startsWith("passphrase:"))
     {
-      passphrase = decode_base64(currLine.substring(currLine.indexOf(":") + 1));
-      Serial.println("passphrase: " + passphrase);
+      decode_base64((const unsigned char *)currLine.substring(currLine.indexOf(":") + 1).c_str(), (unsigned char *)passphrase);
+      // passphrase = std::string(decode_base64(currLine.substring(currLine.indexOf(":") + 1)).c_str());
+      Serial.print("passphrase: ");
+      Serial.println(passphrase);
     }
 
     if (currLine.startsWith("hostname:"))
     {
-      hostName = currLine.substring(currLine.indexOf(":") + 1);
-      Serial.println("hostname: " + hostName);
+      strcpy(hostName, currLine.substring(currLine.indexOf(":") + 1).c_str());
+      // hostName = std::string(currLine.substring(currLine.indexOf(":") + 1).c_str());
+      Serial.print("hostname: ");
+      Serial.println(hostName);
     }
   }
   wifiConfigFile.close();
 }
 
-String decodeBlindsMac(String encodedMac)
+void decodeBlindsMac(String encodedMac, char *decMac)
 {
   String decodedMac;
   String decodedMacBinary;
@@ -153,15 +159,15 @@ String decodeBlindsMac(String encodedMac)
       decodedMac += ":";
   }
 
-  return decodedMac;
+  strncpy(decMac, decodedMac.c_str(), 18);
 }
 
-String passkeyToString(String passkey)
+String passkeyToString(byte *passkey)
 {
   char tmpStr[10] = "";
   String passkeyString = "";
 
-  for (int i = 0; i < passkey.length(); i++)
+  for (int i = 0; i < 6; i++)
   {
     sprintf(tmpStr, "%x", passkey[i]);
     passkeyString += String(tmpStr);
@@ -178,15 +184,23 @@ void readBlindsConfig()
   while (blindsConfigFile.available())
   {
     String currLine = blindsConfigFile.readStringUntil('\n');
-    String currMac = currLine.substring(0, currLine.indexOf(':'));
-    String currPasskey = currLine.substring(currLine.indexOf(':') + 1);
+    String encMac = currLine.substring(0, currLine.indexOf(':'));
+    // char currMac[17];
+    // strncpy(currMac,currLine.substring(0,currLine.indexOf(':')).c_str(),8);
+    String encPasskey = currLine.substring(currLine.indexOf(':') + 1);
 
-    Serial.println("BlindsConfig - mac - " + currMac + " - passkey - " + currPasskey);
+    Serial.println("BlindsConfig - mac - " + encMac + " - passkey - " + encPasskey);
 
-    Serial.println(" -- Decoded MAC: " + decodeBlindsMac(currMac));
-    Serial.println(" -- Decoded Passkey: " + passkeyToString(decode_base64(currPasskey)));
+    char decMac[18];
+    decodeBlindsMac(encMac, decMac);
+    byte decPasskey[6];
+    decode_base64((byte *)encPasskey.c_str(), decPasskey);
 
-    blindsList[blindCount] = new blind(decodeBlindsMac(currMac), (byte *)decode_base64(currPasskey).c_str());
+    Serial.print(" -- Decoded MAC: ");
+    Serial.println(decMac);
+    Serial.println(" -- Decoded Passkey: " + passkeyToString(decPasskey));
+
+    blindsList[blindCount] = new blind(decMac, decPasskey);
     blindCount++;
   }
   blindsConfigFile.close();
@@ -206,8 +220,8 @@ void setup()
   }
 
   readWIFIConfig();
-  WiFi.setHostname(hostName.c_str());
-  WiFi.begin(ssid.c_str(), passphrase.c_str());
+  WiFi.setHostname(hostName);
+  WiFi.begin(ssid, passphrase);
 
   while (WiFi.status() != WL_CONNECTED)
   {
@@ -241,7 +255,7 @@ void setup()
 
 #endif
 
-  BLEDevice::init(hostName.c_str());
+  BLEDevice::init(hostName);
   // pBLEScan = BLEDevice::getScan(); // create new scan
   // pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   // pBLEScan->setActiveScan(true); // active scan uses more power, but get results faster
@@ -250,7 +264,7 @@ void setup()
 
   webServer.on("/", handle_OnConnect);
   webServer.on("/scan", handle_OnScan);
-  webServer.on("/refresh",handle_OnRefreshBlinds);
+  webServer.on("/refresh", handle_OnRefreshBlinds);
   webServer.on("/style.css", handle_OnCSS);
   webServer.begin();
 
@@ -267,7 +281,8 @@ void loop()
   ArduinoOTA.handle();
 }
 
-void handle_OnRefreshBlinds(AsyncWebServerRequest *request) {
+void handle_OnRefreshBlinds(AsyncWebServerRequest *request)
+{
   request->redirect("/");
 
   BlindsRefreshNow = true;
@@ -302,7 +317,7 @@ void handle_Args(AsyncWebServerRequest *request)
         {
           for (int j = 0; j < blindCount; j++)
           {
-            if (blindsList[i]->mac()->equals(mac))
+            if (strcmp(blindsList[i]->mac(), mac.c_str()) == 0)
             {
               blindsList[i]->setAngle(100);
             }
@@ -312,7 +327,7 @@ void handle_Args(AsyncWebServerRequest *request)
         {
           for (int j = 0; j < blindCount; j++)
           {
-            if (blindsList[i]->mac()->equals(mac))
+            if (strcmp(blindsList[i]->mac(), mac.c_str()) == 0)
             {
               blindsList[i]->setAngle(200);
             }
@@ -342,8 +357,8 @@ void handle_OnConnect(AsyncWebServerRequest *request)
   String tmpDevices = "";
   blind *myblind;
 
-  DEBUGTEXT = "<h2>SSID: " + ssid + "</h2>";
-  DEBUGTEXT += "<h2>PASSPHRASE: " + passphrase + "</h2>";
+  DEBUGTEXT = "<h2>SSID: " + String(ssid) + "</h2>";
+  DEBUGTEXT += "<h2>PASSPHRASE: " + String(passphrase) + "</h2>";
 
   tmpDevices += "<h2>Total Found " + String(blindCount) + "</h2>";
 
@@ -363,11 +378,11 @@ void handle_OnConnect(AsyncWebServerRequest *request)
     tmpDevices += "<li>";
     // tmpDevices += " Address: " + myblind->mac();
     // tmpDevices += " - Key: " + myblind->key();
-    tmpDevices += " Name: " + *myblind->name();
+    tmpDevices += " Name: " + String(myblind->name());
     tmpDevices += " - Connected: " + isConnected;
     tmpDevices += " - Angle: " + String(myblind->getAngle());
-    tmpDevices += "<a class=\"button\" href=\"/?cmd=open&mac=" + *myblind->mac() + "\">Open</a>";
-    tmpDevices += "<a class=\"button\" href=\"/?cmd=close&mac=" + *myblind->mac() + "\">Close</a>";
+    tmpDevices += "<a class=\"button\" href=\"/?cmd=open&mac=" + String(myblind->mac()) + "\">Open</a>";
+    tmpDevices += "<a class=\"button\" href=\"/?cmd=close&mac=" + String(myblind->mac()) + "\">Close</a>";
 
     tmpDevices += "</li>";
   }

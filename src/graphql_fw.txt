@@ -1,0 +1,49 @@
+quey = '''
+query BlindFirmwarePackage {
+  blindFirmwarePackage(
+    current: {
+      BLEBootloaderVersion: 300
+      BLEStackVersion: 101
+      MCUApplicationVersion: 201
+      MCUBootloaderVersion: 102
+      hardwareVersion: 12
+      BLEApplicationVersion: 200
+    }
+  ) {
+    upgradePackage 
+    {
+      BLEApplication {
+        hardware
+        version
+        url
+        createdAt
+        updatedAt
+      }
+      BLEBootloader {
+        hardware
+        version
+        url
+        createdAt
+        updatedAt
+      }
+      BLEStackVersion
+      MCUApplication {
+        hardware
+        version
+        url
+        createdAt
+        updatedAt
+      }
+      MCUBootloaderVersion
+      createdAt
+      hardwareVersion
+      prerequisiteVersion
+      updatedAt
+      version
+    }
+  }
+}
+
+'''
+
+client._graphql(quey)

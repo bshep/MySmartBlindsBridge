@@ -1,3 +1,6 @@
+#ifndef MSB_BLIND_H
+#define MSB_BLIND_H
+
 #include <Arduino.h>
 #include <BLEDevice.h>
 #include <BLEUtils.h>
@@ -28,7 +31,6 @@ private:
     void _writeAngle();
     bool connect();
     void disconnect();
-    bool isConnected();
     void unlock();
 public:
     blind(char *mac_addr, byte *key);
@@ -40,5 +42,8 @@ public:
 
     void setAngle(int newAngle);
     int getAngle();
+    bool isConnected();
 
 };
+
+#endif

@@ -15,7 +15,7 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <WebSerial.h>
-#include <base64.hpp>
+#include <ArduinoHA.h>
 
 #ifndef CONFIG_BT_BLE_50_FEATURES_SUPPORTED
 #warning "Not compatible hardware"

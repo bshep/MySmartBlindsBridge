@@ -142,6 +142,27 @@ void readWIFIConfig()
   wifiConfigFile.close();
 }
 
+blind *findBlindByMac(const char *mac)
+{
+  blind *result = NULL;
+  WebSerial.println("findBlindByMac - Entered Function");
+
+  WebSerial.println(" -- searching for mac: " + String(mac) + "of length = " + String(strlen(mac)));
+
+  for (int i = 0; i < blindCount; i++)
+  {
+    WebSerial.println(" -- comparing against mac: " + String(blindsList[i]->mac()) + "of length = " + String(strlen(blindsList[i]->mac())));
+
+    if (strcmp(mac, blindsList[i]->mac()) == 0)
+    {
+      result = blindsList[i];
+      break;
+    }
+  }
+
+  return result;
+}
+
 void decodeBlindsMac(String encodedMac, char *decMac)
 {
   String decodedMac;
@@ -251,7 +272,10 @@ void setup()
   //   } });
 
   ArduinoOTA.onEnd([]()
-                   { WebSerial.println("OTA Finished"); });
+                   {
+                     WebSerial.println("OTA Finished");
+                     // WiFi.disconnect(true,false);
+                   });
 
 #endif
 
@@ -315,22 +339,18 @@ void handle_Args(AsyncWebServerRequest *request)
         String mac = request->arg(i + 1);
         if (argValue == "open")
         {
-          for (int j = 0; j < blindCount; j++)
+          blind *foundBlind = findBlindByMac(mac.c_str());
+          if (foundBlind)
           {
-            if (strcmp(blindsList[i]->mac(), mac.c_str()) == 0)
-            {
-              blindsList[i]->setAngle(100);
-            }
+            foundBlind->setAngle(100);
           }
         }
         else if (argValue == "close")
         {
-          for (int j = 0; j < blindCount; j++)
+          blind *foundBlind = findBlindByMac(mac.c_str());
+          if (foundBlind)
           {
-            if (strcmp(blindsList[i]->mac(), mac.c_str()) == 0)
-            {
-              blindsList[i]->setAngle(200);
-            }
+            foundBlind->setAngle(200);
           }
         }
       }

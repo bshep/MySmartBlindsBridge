@@ -9,6 +9,7 @@ blind::blind(char *mac_addr, byte *key)
     this->_newAngle = 255;
     this->_angle = 254;
     strcpy(this->_name, "UNKNOWN");
+    this->_needUnlock = true;
     // this->_name = new String("UNKNOWN");
 
     for (int i = 0; i < 6; i++)
@@ -37,6 +38,7 @@ bool blind::connect()
         BLEAddress myAddr = BLEAddress(std::string(this->_mac));
 
         this->_pClient->connect(myAddr, BLE_ADDR_TYPE_RANDOM);
+        this->_needUnlock = true;
     }
     WebSerial.println("blind::connect() - Exit Function");
 
@@ -66,6 +68,11 @@ int blind::getAngle()
 
 void blind::unlock()
 {
+    if(!this->_needUnlock) {
+        WebSerial.println("blind::unlock() - already unlocked");
+        return;
+    }
+
     if (!this->connect())
     {
         WebSerial.println("blind::unlock() - Error - Unable to connect");
@@ -85,6 +92,7 @@ void blind::unlock()
     }
 
     tmpCharact->writeValue(this->_key, 6, true);
+    this->_needUnlock = false;
 }
 
 char *blind::mac()
@@ -112,6 +120,7 @@ void blind::refresh()
     // }
 
     this->unlock();
+    // return;
 
     BLERemoteService *tmpService = this->_pClient->getService(this->_SERVICE_UUID);
     if (tmpService == NULL)
@@ -120,7 +129,7 @@ void blind::refresh()
         return;
     }
 
-    // Refresh the Name of the Blind
+    // // Refresh the Name of the Blind
     BLERemoteCharacteristic *tmpCharact = tmpService->getCharacteristic(this->_NAME_UUID);
     if (tmpCharact == NULL)
     {
@@ -130,12 +139,13 @@ void blind::refresh()
 
     std::string tmpName = tmpCharact->readValue();
 
-    if (tmpName.length() > 4)
-    {
-        tmpName = tmpName.substr(4);
-    }
+    // if (tmpName.length() > 4)
+    // {
+    //     tmpName = tmpName.substr(4);
+    // }
     
-    tmpName.copy(this->_name,tmpName.length());
+    strcpy(this->_name, tmpName.c_str() + 4);
+    // tmpName.copy(this->_name, tmpName.length());
     // this->_name = new String(tmpName);
     WebSerial.print("NAME = ");
     WebSerial.println(this->_name);
@@ -151,6 +161,7 @@ void blind::refresh()
 
     this->_angle = tmpCharact->readUInt8();
     WebSerial.println("ANGLE = " + String(this->_angle));
+    WebSerial.println(" -- oldAngle = " + String(this->_angle) + " - newAngle - " + String(this->_newAngle));
 
     if (this->_angle != this->_newAngle)
     {
@@ -158,14 +169,14 @@ void blind::refresh()
         this->_writeAngle();
     }
 
-    this->disconnect();
-
+    // this->disconnect();
     WebSerial.println("blind::refresh() - Exit Function");
 }
 
 void blind::_writeAngle()
 {
     WebSerial.println("blind::_writeAngle() - Entered Function");
+    WebSerial.println(" -- oldAngle = " + String(this->_angle) + " - newAngle - " + String(this->_newAngle));
 
     if (this->_newAngle == 255)
     {
@@ -175,10 +186,10 @@ void blind::_writeAngle()
         return;
     }
 
-    if (!this->connect())
-    {
-        WebSerial.println("blind::_writeAngle() - Error - Unable to connect");
-    }
+    // if (!this->connect())
+    // {
+    //     WebSerial.println("blind::_writeAngle() - Error - Unable to connect");
+    // }
 
     this->unlock();
 
@@ -188,16 +199,15 @@ void blind::_writeAngle()
         WebSerial.println("blind::_writeAngle() - Could not get service");
     }
 
-    // Refresh the Name of the Blind
     BLERemoteCharacteristic *tmpCharact = tmpService->getCharacteristic(this->_ANGLE_UUID);
     if (tmpCharact == NULL)
     {
         WebSerial.println("blind::_writeAngle() - Could not get charecteristic for ANGLE");
     }
-    tmpCharact->writeValue(this->_newAngle);
+    tmpCharact->writeValue((uint8_t)this->_newAngle);
     this->_angle = _newAngle;
     
-    this->disconnect();
+    // this->disconnect();
 
     WebSerial.println("blind::_writeAngle() - Exit Function");
 }

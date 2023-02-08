@@ -14,6 +14,7 @@ private:
     char _name[20];
     int _angle;
     int _newAngle; //Used when updating blind
+    bool _needUnlock;
 
 
     // UUIDs to control the blinds

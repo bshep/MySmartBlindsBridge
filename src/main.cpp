@@ -29,7 +29,7 @@ int scanTime = 5; // In seconds
 BLEScan *pBLEScan;
 BLEScanResults foundDevices;
 bool BLERefreshNow = false;
-bool BlindsRefreshNow = false;
+bool BlindsRefreshNow = true;
 
 AsyncWebServer webServer(80);
 AsyncWebServer debugServer(88);
@@ -98,9 +98,8 @@ bool onRefreshBlinds(void *args)
       blindsList[i]->refresh();
       coverList[i]->setName(blindsList[i]->name());
 
-
       pos = blindsList[i]->getAngle();
-      pos -= 100; // Angle goes from 100(open) to 200(closed) 
+      pos -= 100; // Angle goes from 100(open) to 200(closed)
 
       coverList[i]->setPosition(pos);
     }
@@ -169,8 +168,7 @@ void setup()
 
   ArduinoOTA.onStart([]()
                      { WebSerial.println("OTA Begin"); 
-                     BlindsRefreshNow = false;
-                     });
+                     BlindsRefreshNow = false; });
 
   // ArduinoOTA.onProgress([](int totalWritten, int size)
   //                       {
@@ -205,7 +203,6 @@ void setup()
   webServer.begin();
 
   debugServer.begin();
-
 
   // set device's details (optional)
   // Unique ID must be set!

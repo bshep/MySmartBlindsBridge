@@ -5,6 +5,7 @@
 - PlatformIO
 - Home Assistant insall
 - MQTT broker
+- ESP32 w bluetooth 5 support 
 
 ## Setup
 - Edit wifi.cfg and add your base64 encoded ssid and passphrase

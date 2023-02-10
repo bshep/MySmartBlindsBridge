@@ -19,6 +19,16 @@ h3 {
     margin-bottom: 50px;
 }
 
+.table {
+    display: block;
+    width: fit-content;
+    background-color: white;
+    color: black;
+    padding: 13px 30px;
+    font-size: 25px;
+    margin: 0px auto 35px;
+}
+
 .button {
     display: block;
     width: fit-content;

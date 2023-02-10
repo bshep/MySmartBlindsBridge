@@ -15,6 +15,7 @@ AsyncWebServer debugServer(88);
 
 blind *blindsList[10];
 HACover *coverList[10];
+HASensorNumber *sensorList[10];
 int blindCount = 0;
 
 Timer<10> timer;
@@ -24,7 +25,7 @@ String DEBUGTEXT;
 #define BROKER_ADDR "192.168.2.222"
 WiFiClient client;
 HADevice device;
-HAMqtt mqtt(client, device);
+HAMqtt mqtt(client, device, 20);
 byte deviceMAC[18];
 
 void onWebSerial_recvMsg(uint8_t *data, size_t len)
@@ -54,6 +55,13 @@ void onWebSerial_recvMsg(uint8_t *data, size_t len)
     }
     WebSerial.print("\n");
   }
+
+  if (d == "SENSORS") {
+    for (int i = 0; i < blindCount; i++) {
+      blindsList[i]->refreshSensors();
+    }
+  }
+
 }
 
 bool onRefreshBlinds(void *args)
@@ -67,7 +75,11 @@ bool onRefreshBlinds(void *args)
     for (int i = 0; i < blindCount; i++)
     {
       blindsList[i]->refresh();
-      coverList[i]->setName(blindsList[i]->name());
+      blindsList[i]->refreshSensors();
+      // coverList[i]->setName(blindsList[i]->name());
+      // sensorList[i]->setName(blindsList[i]->name());
+      sensorList[i]->setValue(blindsList[i]->sensors->getBatteryPercentage());
+
 
       pos = blindsList[i]->getAngle();
 
@@ -169,6 +181,7 @@ void setup()
   device.setUniqueId(deviceMAC, sizeof(deviceMAC));
   device.setName("MySmartBlindsBridge MDNS");
   device.setSoftwareVersion("1.0.0");
+  device.enableLastWill();
   mqtt.begin(BROKER_ADDR);
 
   readBlindsConfig();

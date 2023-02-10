@@ -5,6 +5,7 @@
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <WebSerial.h>
+#include "blindSensors.h"
 
 extern String DEBUGTEXT;
 
@@ -25,6 +26,7 @@ private:
     std::string _ANGLE_UUID =   "00001403-1212-efde-1600-785feabcd123";
     std::string _SERVICE_UUID = "00001400-1212-efde-1600-785feabcd123";
     std::string _NAME_UUID =    "00001401-1212-efde-1600-785feabcd123";
+    std::string _SENSORS_UUID = "00001651-1212-efde-1600-785feabcd123";
 
     BLEClient*  _pClient;
 
@@ -39,6 +41,8 @@ public:
     byte *key();
     char *name();
     void refresh();
+    void refreshSensors();
+    blindSensors *sensors;
 
     void setAngle(int newAngle);
     int getAngle();

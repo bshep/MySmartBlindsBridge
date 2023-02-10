@@ -10,11 +10,14 @@
 extern blind *blindsList[];
 extern HACover *coverList[];
 char coverID[10][20];
+char batterySensorID[10][30];
 extern int blindCount;
 extern char hostName[];
 extern char ssid[];
 extern char passphrase[];
 extern bool BlindsRefreshNow;
+
+extern HASensorNumber *sensorList[10];
 
 String decode_base64(String input)
 {
@@ -149,13 +152,14 @@ void onCoverCommand(HACover::CoverCommand cmd, HACover *sender)
     // You can also report position using setPosition() method
 }
 
-void onCoverPosition(HANumeric position, HACover *sender) {
+void onCoverPosition(HANumeric position, HACover *sender)
+{
     int blindIndex = findBlindIndexFromHACover(sender);
     WebSerial.println("Blind index " + String(blindIndex));
     WebSerial.print("Set Position to: ");
     WebSerial.println(position.toInt8());
 
-    int blindPos = (100 - position.toInt8() ) + 100;
+    int blindPos = (100 - position.toInt8()) + 100;
 
     blindsList[blindIndex]->setAngle(blindPos);
 }
@@ -185,7 +189,7 @@ void readBlindsConfig()
         Serial.println(" -- Decoded Passkey: " + passkeyToString(decPasskey));
 
         blindsList[blindCount] = new blind(decMac, decPasskey);
-        // blindsList[blindCount]->refresh();
+        blindsList[blindCount]->refresh();
 
         char *deviceID = coverID[blindCount];
         sprintf(deviceID, "msb_Cover_%i", blindCount);
@@ -195,15 +199,23 @@ void readBlindsConfig()
 
         coverList[blindCount]->onCommand(onCoverCommand);
         coverList[blindCount]->onPosition(onCoverPosition);
-        
+
         coverList[blindCount]->setIcon("mdi:blinds-horizontal");
-        // // coverList[blindCount]->setName(blindsList[blindCount]->name());
+        coverList[blindCount]->setName(blindsList[blindCount]->name());
         coverList[blindCount]->setAvailability(false);
         coverList[blindCount]->setAvailability(true);
-        // coverList[blindCount]->setPosition(50, true);
         coverList[blindCount]->setState(HACover::StateStopped); // report state back to the HA
+
+        deviceID = batterySensorID[blindCount];
+        sprintf(deviceID, "%s_batt", blindsList[blindCount]->name(), blindCount);
+        sensorList[blindCount] = new HASensorNumber(deviceID);
+        sensorList[blindCount]->setDeviceClass("battery");
+        sensorList[blindCount]->setUnitOfMeasurement("%");
+        sensorList[blindCount]->setValue(0);
+        sensorList[blindCount]->setName(blindsList[blindCount]->name());
 
         blindCount++;
     }
+
     blindsConfigFile.close();
 }

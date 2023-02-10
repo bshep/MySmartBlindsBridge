@@ -154,6 +154,10 @@ void onCoverPosition(HANumeric position, HACover *sender) {
     WebSerial.println("Blind index " + String(blindIndex));
     WebSerial.print("Set Position to: ");
     WebSerial.println(position.toInt8());
+
+    int blindPos = (100 - position.toInt8() ) + 100;
+
+    blindsList[blindIndex]->setAngle(blindPos);
 }
 
 void readBlindsConfig()

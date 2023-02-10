@@ -3,6 +3,7 @@
 #include "main.h"
 #include "blind.h"
 #include "config.h"
+#include "Version.h"
 
 // #define ENABLE_DEBUG
 #ifdef ENABLE_DEBUG
@@ -303,6 +304,8 @@ void handle_OnConnect(AsyncWebServerRequest *request)
     tmpDevices += "</tr>";
   }
   tmpDevices += "</table>";
+  DEBUGTEXT = "<p>Version: " + String(VERSION) + " </p>";
+  DEBUGTEXT += "<p>Built on: " + String(BUILD_TIMESTAMP) + " </p>";
 
   tmp.replace("<!-- DEVICES -->", tmpDevices);
   tmp.replace("<!-- DEBUGTEXT -->", DEBUGTEXT);

@@ -27,8 +27,6 @@ WiFiClient client;
 HADevice device;
 HAMqtt mqtt(client, device);
 byte deviceMAC[18];
-// HACover *coverDevice = new HACover("MSB_Cover1", HACover::PositionFeature);
-
 
 
 void recvMsg(uint8_t *data, size_t len)
@@ -81,9 +79,6 @@ bool onRefreshBlinds(void *args)
       {
         coverList[i]->setState(HACover::StateClosed);
       }
-      // pos = 100 - (pos - 100); // Angle goes from 100(open) to 200(closed)
-
-      // coverList[i]->setPosition(pos);
     }
   }
   return true;
@@ -151,21 +146,9 @@ void setup()
                      { WebSerial.println("OTA Begin"); 
                      BlindsRefreshNow = false; });
 
-  // ArduinoOTA.onProgress([](int totalWritten, int size)
-  //                       {
-  //   static int lastPercent = 0;
-  //   int percent = totalWritten*100 / size;
-
-  //   if (percent > lastPercent) {
-  //       lastPercent = percent;
-
-  //       WebSerial.println("OTA Progress - Written " + String(totalWritten) + " of " + String(size) + " - " + String(lastPercent) + "\% Done");
-  //   } });
-
   ArduinoOTA.onEnd([]()
                    {
                      WebSerial.println("OTA Finished");
-                     // WiFi.disconnect(true,false);
                    });
 
 #endif

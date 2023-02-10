@@ -17,7 +17,6 @@ blind *blindsList[10];
 HACover *coverList[10];
 int blindCount = 0;
 
-
 Timer<10> timer;
 
 String DEBUGTEXT;
@@ -28,8 +27,7 @@ HADevice device;
 HAMqtt mqtt(client, device);
 byte deviceMAC[18];
 
-
-void recvMsg(uint8_t *data, size_t len)
+void onWebSerial_recvMsg(uint8_t *data, size_t len)
 {
   WebSerial.println("Received Data...");
   String d = "";
@@ -48,19 +46,20 @@ void recvMsg(uint8_t *data, size_t len)
   if (d == "PRINTMAC")
   {
     WebSerial.print("DEVICE MAC : ");
-    for(int i = 0; i <18; i++) {
+    for (int i = 0; i < 18; i++)
+    {
       char byteStr[10];
-      sprintf(byteStr, "%x",deviceMAC[i]);
+      sprintf(byteStr, "%x", deviceMAC[i]);
       WebSerial.print(byteStr);
     }
     WebSerial.print("\n");
   }
 }
 
-
 bool onRefreshBlinds(void *args)
 {
-  int pos = 0;
+  int pos = 0;   // in MSB 100 == open and 200 == closed
+  int HApos = 0; // in HA 0 == closed and 100 == open
 
   if (BlindsRefreshNow)
   {
@@ -71,6 +70,8 @@ bool onRefreshBlinds(void *args)
       coverList[i]->setName(blindsList[i]->name());
 
       pos = blindsList[i]->getAngle();
+
+      HApos = 100 - (pos - 100);
       if (pos > 95 && pos < 105)
       {
         coverList[i]->setState(HACover::StateOpen);
@@ -79,6 +80,8 @@ bool onRefreshBlinds(void *args)
       {
         coverList[i]->setState(HACover::StateClosed);
       }
+
+      coverList[i]->setPosition(HApos);
     }
   }
   return true;
@@ -137,7 +140,7 @@ void setup()
   }
 
   WebSerial.begin(&debugServer);
-  WebSerial.msgCallback(recvMsg);
+  WebSerial.msgCallback(onWebSerial_recvMsg);
 
 #ifdef ENABLE_OTA
   ArduinoOTA.begin();
@@ -147,14 +150,11 @@ void setup()
                      BlindsRefreshNow = false; });
 
   ArduinoOTA.onEnd([]()
-                   {
-                     WebSerial.println("OTA Finished");
-                   });
+                   { WebSerial.println("OTA Finished"); });
 
 #endif
 
   BLEDevice::init(hostName);
-
 
   webServer.on("/", handle_OnConnect);
   webServer.on("/refresh", handle_OnRefreshBlinds);
@@ -190,8 +190,7 @@ void handle_OnRefreshBlinds(AsyncWebServerRequest *request)
   BlindsRefreshNow = true;
 }
 
-
-void handle_Args(AsyncWebServerRequest *request)
+void handle_HTTPArgs(AsyncWebServerRequest *request)
 {
   int numArgs = request->args();
 
@@ -253,7 +252,7 @@ void handle_OnConnect(AsyncWebServerRequest *request)
 
   if (request->args() > 0)
   {
-    handle_Args(request);
+    handle_HTTPArgs(request);
     request->redirect("/");
     return;
   }
@@ -266,19 +265,23 @@ void handle_OnConnect(AsyncWebServerRequest *request)
   // DEBUGTEXT += "<h2>PASSPHRASE: " + String(passphrase) + "</h2>";
 
   tmpDevices += "<h2>Total Found " + String(blindCount) + "</h2>";
+  tmpDevices += "<table class=\"table\">";
+  tmpDevices += "<thead><tr><td>Name</td><td>Angle</td><td>Controls</td></tr></thead>";
 
   for (int i = 0; i < blindCount; i++)
   {
     myblind = blindsList[i];
 
-    tmpDevices += "<li>";
-    tmpDevices += " Name: " + String(myblind->name());
-    tmpDevices += " - Angle: " + String(myblind->getAngle());
-    tmpDevices += "<a class=\"button\" href=\"/?cmd=open&mac=" + String(myblind->mac()) + "\">Open</a>";
-    tmpDevices += "<a class=\"button\" href=\"/?cmd=close&mac=" + String(myblind->mac()) + "\">Close</a>";
+    tmpDevices += "<tr>";
+    tmpDevices += "<td>" + String(myblind->name()) + "</td>";
+    tmpDevices += "<td>" + String(myblind->getAngle()) + "</td>";
+    tmpDevices += "<td><a class=\"button\" href=\"/?cmd=open&mac=" + String(myblind->mac()) + "\">Open</a>";
+    tmpDevices += "<a class=\"button\" href=\"/?cmd=close&mac=" + String(myblind->mac()) + "\">Close</a></td>";
 
-    tmpDevices += "</li>";
+    tmpDevices += "</tr>";
   }
+  tmpDevices += "</table>";
+
   tmp.replace("<!-- DEVICES -->", tmpDevices);
   tmp.replace("<!-- DEBUGTEXT -->", DEBUGTEXT);
 

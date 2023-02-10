@@ -149,6 +149,13 @@ void onCoverCommand(HACover::CoverCommand cmd, HACover *sender)
     // You can also report position using setPosition() method
 }
 
+void onCoverPosition(HANumeric position, HACover *sender) {
+    int blindIndex = findBlindIndexFromHACover(sender);
+    WebSerial.println("Blind index " + String(blindIndex));
+    WebSerial.print("Set Position to: ");
+    WebSerial.println(position.toInt8());
+}
+
 void readBlindsConfig()
 {
     File blindsConfigFile = LittleFS.open("/blinds.cfg", "r");
@@ -183,6 +190,8 @@ void readBlindsConfig()
         coverList[blindCount] = new HACover(deviceID, HACover::PositionFeature);
 
         coverList[blindCount]->onCommand(onCoverCommand);
+        coverList[blindCount]->onPosition(onCoverPosition);
+        
         coverList[blindCount]->setIcon("mdi:blinds-horizontal");
         // // coverList[blindCount]->setName(blindsList[blindCount]->name());
         coverList[blindCount]->setAvailability(false);

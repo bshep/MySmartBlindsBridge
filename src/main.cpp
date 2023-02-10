@@ -1,18 +1,3 @@
-// #include <Arduino.h>
-
-// void setup() {
-//   // put your setup code here, to run once:
-// }
-
-// void loop() {
-//   // put your main code here, to run repeatedly:
-// }
-
-/*
-   Based on Neil Kolban example for IDF: https://github.com/nkolban/esp32-snippets/blob/master/cpp_utils/tests/BLE%20Tests/SampleScan.cpp
-   Ported to Arduino ESP32 by Evandro Copercini
-*/
-
 #define ENABLE_OTA
 
 #include "main.h"
@@ -23,12 +8,6 @@ char hostName[32] = "msb1";
 char ssid[32];
 char passphrase[64];
 
-static std::string BlindBLEName = "SmartBlind_DFU";
-
-int scanTime = 5; // In seconds
-BLEScan *pBLEScan;
-BLEScanResults foundDevices;
-bool BLERefreshNow = false;
 bool BlindsRefreshNow = true;
 
 AsyncWebServer webServer(80);
@@ -38,7 +17,6 @@ blind *blindsList[10];
 HACover *coverList[10];
 int blindCount = 0;
 
-bool scanDone = false;
 
 Timer<10> timer;
 
@@ -51,12 +29,7 @@ HAMqtt mqtt(client, device);
 byte deviceMAC[18];
 // HACover *coverDevice = new HACover("MSB_Cover1", HACover::PositionFeature);
 
-class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
-{
-  void onResult(BLEAdvertisedDevice advertisedDevice)
-  {
-  }
-};
+
 
 void recvMsg(uint8_t *data, size_t len)
 {
@@ -78,23 +51,14 @@ void recvMsg(uint8_t *data, size_t len)
   {
     WebSerial.print("DEVICE MAC : ");
     for(int i = 0; i <18; i++) {
-      WebSerial.print(deviceMAC[i]);
+      char byteStr[10];
+      sprintf(byteStr, "%x",deviceMAC[i]);
+      WebSerial.print(byteStr);
     }
     WebSerial.print("\n");
   }
 }
 
-bool onRefreshBLEScan(void *args)
-{
-  if (BLERefreshNow)
-  {
-    BLERefreshNow = false;
-    WebSerial.println("Updating Scan Results....");
-    foundDevices = pBLEScan->start(scanTime, true);
-    WebSerial.println("Done!");
-  }
-  return true;
-}
 
 bool onRefreshBlinds(void *args)
 {
@@ -174,7 +138,6 @@ void setup()
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(100);
-    // Serial.println("Wifi Connecting..." + ssid + " " + passphrase);
     Serial.println("Wifi Connecting...");
   }
 
@@ -208,14 +171,9 @@ void setup()
 #endif
 
   BLEDevice::init(hostName);
-  // pBLEScan = BLEDevice::getScan(); // create new scan
-  // pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-  // pBLEScan->setActiveScan(true); // active scan uses more power, but get results faster
-  // pBLEScan->setInterval(1000);
-  // pBLEScan->setWindow(200); // less or equal setInterval value
+
 
   webServer.on("/", handle_OnConnect);
-  webServer.on("/scan", handle_OnScan);
   webServer.on("/refresh", handle_OnRefreshBlinds);
   webServer.on("/style.css", handle_OnCSS);
   webServer.begin();
@@ -232,7 +190,6 @@ void setup()
 
   readBlindsConfig();
 
-  timer.every(1000, onRefreshBLEScan);
   timer.every(1000, onRefreshBlinds);
 }
 
@@ -241,7 +198,6 @@ void loop()
   timer.tick();
   ArduinoOTA.handle();
   mqtt.loop();
-  // Serial.print(".");
 }
 
 void handle_OnRefreshBlinds(AsyncWebServerRequest *request)
@@ -251,14 +207,6 @@ void handle_OnRefreshBlinds(AsyncWebServerRequest *request)
   BlindsRefreshNow = true;
 }
 
-void handle_OnScan(AsyncWebServerRequest *request)
-{
-  WebSerial.println("HTTP Request for: " + request->url());
-
-  request->redirect("/");
-
-  BLERefreshNow = !BLERefreshNow;
-}
 
 void handle_Args(AsyncWebServerRequest *request)
 {
@@ -339,21 +287,9 @@ void handle_OnConnect(AsyncWebServerRequest *request)
   for (int i = 0; i < blindCount; i++)
   {
     myblind = blindsList[i];
-    String isConnected = "NA";
-    // if (myblind->isConnected())
-    // {
-    //   isConnected = "Yes";
-    // }
-    // else
-    // {
-    //   isConnected = "No";
-    // }
 
     tmpDevices += "<li>";
-    // tmpDevices += " Address: " + myblind->mac();
-    // tmpDevices += " - Key: " + myblind->key();
     tmpDevices += " Name: " + String(myblind->name());
-    tmpDevices += " - Connected: " + isConnected;
     tmpDevices += " - Angle: " + String(myblind->getAngle());
     tmpDevices += "<a class=\"button\" href=\"/?cmd=open&mac=" + String(myblind->mac()) + "\">Open</a>";
     tmpDevices += "<a class=\"button\" href=\"/?cmd=close&mac=" + String(myblind->mac()) + "\">Close</a>";

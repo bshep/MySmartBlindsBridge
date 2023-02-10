@@ -48,6 +48,7 @@ String DEBUGTEXT;
 WiFiClient client;
 HADevice device;
 HAMqtt mqtt(client, device);
+byte deviceMAC[18];
 // HACover *coverDevice = new HACover("MSB_Cover1", HACover::PositionFeature);
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
@@ -71,6 +72,15 @@ void recvMsg(uint8_t *data, size_t len)
     WebSerial.println("REBOOTING");
     delay(500);
     ESP.restart();
+  }
+
+  if (d == "PRINTMAC")
+  {
+    WebSerial.print("DEVICE MAC : ");
+    for(int i = 0; i <18; i++) {
+      WebSerial.print(deviceMAC[i]);
+    }
+    WebSerial.print("\n");
   }
 }
 
@@ -99,9 +109,17 @@ bool onRefreshBlinds(void *args)
       coverList[i]->setName(blindsList[i]->name());
 
       pos = blindsList[i]->getAngle();
-      pos -= 100; // Angle goes from 100(open) to 200(closed)
+      if (pos > 95 && pos < 105)
+      {
+        coverList[i]->setState(HACover::StateOpen);
+      }
+      else if (pos > 195 || pos < 5)
+      {
+        coverList[i]->setState(HACover::StateClosed);
+      }
+      // pos = 100 - (pos - 100); // Angle goes from 100(open) to 200(closed)
 
-      coverList[i]->setPosition(pos);
+      // coverList[i]->setPosition(pos);
     }
   }
   return true;
@@ -206,9 +224,8 @@ void setup()
 
   // set device's details (optional)
   // Unique ID must be set!
-  byte mac[18];
-  WiFi.macAddress(mac);
-  device.setUniqueId(mac, sizeof(mac));
+  WiFi.macAddress(deviceMAC);
+  device.setUniqueId(deviceMAC, sizeof(deviceMAC));
   device.setName("MySmartBlindsBridge MDNS");
   device.setSoftwareVersion("1.0.0");
   mqtt.begin(BROKER_ADDR);

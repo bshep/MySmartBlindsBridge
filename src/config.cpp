@@ -7,6 +7,15 @@
 
 #include "blind.h"
 
+// #define ENABLE_DEBUG
+#ifdef ENABLE_DEBUG
+    #define DEBUG_PRINT(x) WebSerial.print(x)
+    #define DEBUG_PRINTLN(x) WebSerial.println(x)
+#else
+    #define DEBUG_PRINT(x)
+    #define DEBUG_PRINTLN(x)
+#endif
+
 extern blind *blindsList[];
 extern HACover *coverList[];
 char coverID[10][20];
@@ -111,14 +120,14 @@ int findBlindIndexFromHACover(HACover *cover)
 void onCoverCommand(HACover::CoverCommand cmd, HACover *sender)
 {
     int blindIndex = findBlindIndexFromHACover(sender);
-    WebSerial.println("Blind index " + String(blindIndex));
+    DEBUG_PRINTLN("Blind index " + String(blindIndex));
 
     if (blindIndex >= 0)
     {
 
         if (cmd == HACover::CommandOpen)
         {
-            WebSerial.println("Command: Open");
+            DEBUG_PRINTLN("Command: Open");
             sender->setState(HACover::StateOpen);    // report state back to the HA
             sender->setState(HACover::StateStopped); // report state back to the HA
             blindsList[blindIndex]->setAngle(100);
@@ -126,7 +135,7 @@ void onCoverCommand(HACover::CoverCommand cmd, HACover *sender)
         }
         else if (cmd == HACover::CommandClose)
         {
-            WebSerial.println("Command: Close");
+            DEBUG_PRINTLN("Command: Close");
             sender->setState(HACover::StateClosed);  // report state back to the HA
             sender->setState(HACover::StateStopped); // report state back to the HA
             blindsList[blindIndex]->setAngle(200);
@@ -134,13 +143,13 @@ void onCoverCommand(HACover::CoverCommand cmd, HACover *sender)
         }
         else if (cmd == HACover::CommandStop)
         {
-            WebSerial.println("Command: Stop");
+            DEBUG_PRINTLN("Command: Stop");
             sender->setState(HACover::StateStopped); // report state back to the HA
         }
     }
     else
     {
-        WebSerial.println("Could not find a blind that matches that HACover");
+        DEBUG_PRINTLN("Could not find a blind that matches that HACover");
     }
     // Available states:
     // HACover::StateClosed
@@ -155,9 +164,9 @@ void onCoverCommand(HACover::CoverCommand cmd, HACover *sender)
 void onCoverPosition(HANumeric position, HACover *sender)
 {
     int blindIndex = findBlindIndexFromHACover(sender);
-    WebSerial.println("Blind index " + String(blindIndex));
-    WebSerial.print("Set Position to: ");
-    WebSerial.println(position.toInt8());
+    DEBUG_PRINTLN("Blind index " + String(blindIndex));
+    DEBUG_PRINT("Set Position to: ");
+    DEBUG_PRINTLN(position.toInt8());
 
     int blindPos = (100 - position.toInt8()) + 100;
 

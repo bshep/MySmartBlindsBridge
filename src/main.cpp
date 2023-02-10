@@ -4,6 +4,15 @@
 #include "blind.h"
 #include "config.h"
 
+// #define ENABLE_DEBUG
+#ifdef ENABLE_DEBUG
+    #define DEBUG_PRINT(x) WebSerial.print(x)
+    #define DEBUG_PRINTLN(x) WebSerial.println(x)
+#else
+    #define DEBUG_PRINT(x)
+    #define DEBUG_PRINTLN(x)
+#endif
+
 char hostName[32] = "msb1";
 char ssid[32];
 char passphrase[64];
@@ -30,30 +39,30 @@ byte deviceMAC[18];
 
 void onWebSerial_recvMsg(uint8_t *data, size_t len)
 {
-  WebSerial.println("Received Data...");
+  DEBUG_PRINTLN("Received Data...");
   String d = "";
   for (int i = 0; i < len; i++)
   {
     d += char(data[i]);
   }
-  WebSerial.println(d);
+  DEBUG_PRINTLN(d);
   if (d == "REBOOT")
   {
-    WebSerial.println("REBOOTING");
+    DEBUG_PRINTLN("REBOOTING");
     delay(500);
     ESP.restart();
   }
 
   if (d == "PRINTMAC")
   {
-    WebSerial.print("DEVICE MAC : ");
+    DEBUG_PRINT("DEVICE MAC : ");
     for (int i = 0; i < 18; i++)
     {
       char byteStr[10];
       sprintf(byteStr, "%x", deviceMAC[i]);
-      WebSerial.print(byteStr);
+      DEBUG_PRINT(byteStr);
     }
-    WebSerial.print("\n");
+    DEBUG_PRINT("\n");
   }
 
   if (d == "SENSORS") {
@@ -110,13 +119,13 @@ bool onHandleOTA(void *args)
 blind *findBlindByMac(const char *mac)
 {
   blind *result = NULL;
-  WebSerial.println("findBlindByMac - Entered Function");
+  DEBUG_PRINTLN("findBlindByMac - Entered Function");
 
-  WebSerial.println(" -- searching for mac: " + String(mac) + "of length = " + String(strlen(mac)));
+  DEBUG_PRINTLN(" -- searching for mac: " + String(mac) + "of length = " + String(strlen(mac)));
 
   for (int i = 0; i < blindCount; i++)
   {
-    WebSerial.println(" -- comparing against mac: " + String(blindsList[i]->mac()) + "of length = " + String(strlen(blindsList[i]->mac())));
+    DEBUG_PRINTLN(" -- comparing against mac: " + String(blindsList[i]->mac()) + "of length = " + String(strlen(blindsList[i]->mac())));
 
     if (strcmp(mac, blindsList[i]->mac()) == 0)
     {
@@ -158,11 +167,11 @@ void setup()
   ArduinoOTA.begin();
 
   ArduinoOTA.onStart([]()
-                     { WebSerial.println("OTA Begin"); 
+                     { DEBUG_PRINTLN("OTA Begin"); 
                      BlindsRefreshNow = false; });
 
   ArduinoOTA.onEnd([]()
-                   { WebSerial.println("OTA Finished"); });
+                   { DEBUG_PRINTLN("OTA Finished"); });
 
 #endif
 
@@ -209,7 +218,7 @@ void handle_HTTPArgs(AsyncWebServerRequest *request)
 
   if (numArgs > 0)
   {
-    WebSerial.println("Got some args");
+    DEBUG_PRINTLN("Got some args");
 
     String cmd = request->arg("cmd");
 
@@ -255,13 +264,13 @@ void handle_HTTPArgs(AsyncWebServerRequest *request)
   }
   else
   {
-    WebSerial.println("Got NO args");
+    DEBUG_PRINTLN("Got NO args");
   }
 }
 
 void handle_OnConnect(AsyncWebServerRequest *request)
 {
-  WebSerial.println("HTTP Request for: " + request->url());
+  DEBUG_PRINTLN("HTTP Request for: " + request->url());
 
   if (request->args() > 0)
   {
@@ -303,7 +312,7 @@ void handle_OnConnect(AsyncWebServerRequest *request)
 
 void handle_OnCSS(AsyncWebServerRequest *request)
 {
-  WebSerial.println("HTTP Request for: " + request->url());
+  DEBUG_PRINTLN("HTTP Request for: " + request->url());
   request->send(200, "text/css", readFileIntoString("/style.css"));
 }
 

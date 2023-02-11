@@ -1,9 +1,5 @@
-#define ENABLE_OTA
-
 #include "main.h"
-#include "blind.h"
-#include "config.h"
-#include "Version.h"
+
 
 // #define ENABLE_DEBUG
 #ifdef ENABLE_DEBUG
@@ -40,120 +36,6 @@ HADevice device;
 HAMqtt mqtt(client, device, 20);
 byte deviceMAC[18];
 
-void onWebSerial_recvMsg(uint8_t *data, size_t len)
-{
-  DEBUG_PRINTLN("Received Data...");
-  String d = String(data, len);
-
-  WebSerial.println(d);
-
-  d.toUpperCase();
-
-  if (d == "REBOOT")
-  {
-    DEBUG_PRINTLN("REBOOTING");
-    delay(500);
-    ESP.restart();
-  }
-
-  if (d == "PRINTMAC")
-  {
-    DEBUG_PRINT("DEVICE MAC : ");
-    for (int i = 0; i < 18; i++)
-    {
-      char byteStr[10];
-      sprintf(byteStr, "%x", deviceMAC[i]);
-      DEBUG_PRINT(byteStr);
-    }
-    DEBUG_PRINT("\n");
-  }
-
-  if (d == "SENSORS")
-  {
-    for (int i = 0; i < blindCount; i++)
-    {
-      blindsList[i]->refreshSensors();
-    }
-  }
-
-  if (d == "STATUS")
-  {
-    for (int i = 0; i < blindCount; i++)
-    {
-      blindsList[i]->refreshStatus();
-
-      WebSerial.println("Status - isChargingUSB: " + String(blindsList[i]->status->isChargingUSB()));
-      WebSerial.println("Status - isChargingSolar: " + String(blindsList[i]->status->isChargingSolar()));
-      WebSerial.println("Status - isPasskeyValid: " + String(blindsList[i]->status->isPasskeyValid()));
-    }
-  }
-}
-
-bool onRefreshBlinds(void *args)
-{
-  int pos = 0;   // in MSB 100 == open and 200 == closed
-  int HApos = 0; // in HA 0 == closed and 100 == open
-
-  if (BlindsRefreshNow)
-  {
-    // BlindsRefreshNow = false;
-    for (int i = 0; i < blindCount; i++)
-    {
-      blindsList[i]->refresh();
-      blindsList[i]->refreshSensors();
-      blindsList[i]->refreshStatus();
-      // coverList[i]->setName(blindsList[i]->name());
-      // sensorList[i]->setName(blindsList[i]->name());
-      sensorList[i]->setValue(blindsList[i]->sensors->getBatteryPercentage());
-
-      pos = blindsList[i]->getAngle();
-
-      HApos = 100 - (pos - 100);
-      if (pos > 95 && pos < 105)
-      {
-        coverList[i]->setState(HACover::StateOpen);
-      }
-      else if (pos > 195 || pos < 5)
-      {
-        coverList[i]->setState(HACover::StateClosed);
-      }
-
-      coverList[i]->setPosition(HApos);
-      chargingSensorList[i]->setState(blindsList[i]->status->isChargingSolar() || blindsList[i]->status->isChargingUSB());
-    }
-  }
-  return true;
-}
-
-#ifdef ENABLE_OTA
-bool onHandleOTA(void *args)
-{
-  ArduinoOTA.handle();
-  return true;
-}
-#endif
-
-blind *findBlindByMac(const char *mac)
-{
-  blind *result = NULL;
-  DEBUG_PRINTLN("findBlindByMac - Entered Function");
-
-  DEBUG_PRINTLN(" -- searching for mac: " + String(mac) + "of length = " + String(strlen(mac)));
-
-  for (int i = 0; i < blindCount; i++)
-  {
-    DEBUG_PRINTLN(" -- comparing against mac: " + String(blindsList[i]->mac()) + "of length = " + String(strlen(blindsList[i]->mac())));
-
-    if (strcmp(mac, blindsList[i]->mac()) == 0)
-    {
-      result = blindsList[i];
-      break;
-    }
-  }
-
-  return result;
-}
-
 void setup()
 {
   Serial.begin(115200);
@@ -180,7 +62,6 @@ void setup()
   WebSerial.begin(&debugServer);
   WebSerial.msgCallback(onWebSerial_recvMsg);
 
-#ifdef ENABLE_OTA
   ArduinoOTA.begin();
 
   ArduinoOTA.onStart([]()
@@ -189,8 +70,6 @@ void setup()
 
   ArduinoOTA.onEnd([]()
                    { DEBUG_PRINTLN("OTA Finished"); });
-
-#endif
 
   BLEDevice::init(hostName);
 
@@ -348,4 +227,110 @@ String readFileIntoString(String filename)
   tmpFile.close();
 
   return tmpStr;
+}
+
+void onWebSerial_recvMsg(uint8_t *data, size_t len)
+{
+  DEBUG_PRINTLN("Received Data...");
+  String d = String(data, len);
+
+  WebSerial.println(d);
+
+  d.toUpperCase();
+
+  if (d == "REBOOT")
+  {
+    DEBUG_PRINTLN("REBOOTING");
+    delay(500);
+    ESP.restart();
+  }
+
+  if (d == "PRINTMAC")
+  {
+    DEBUG_PRINT("DEVICE MAC : ");
+    for (int i = 0; i < 18; i++)
+    {
+      char byteStr[10];
+      sprintf(byteStr, "%x", deviceMAC[i]);
+      DEBUG_PRINT(byteStr);
+    }
+    DEBUG_PRINT("\n");
+  }
+
+  if (d == "SENSORS")
+  {
+    for (int i = 0; i < blindCount; i++)
+    {
+      blindsList[i]->refreshSensors();
+    }
+  }
+
+  if (d == "STATUS")
+  {
+    for (int i = 0; i < blindCount; i++)
+    {
+      blindsList[i]->refreshStatus();
+
+      WebSerial.println("Status - isChargingUSB: " + String(blindsList[i]->status->isChargingUSB()));
+      WebSerial.println("Status - isChargingSolar: " + String(blindsList[i]->status->isChargingSolar()));
+      WebSerial.println("Status - isPasskeyValid: " + String(blindsList[i]->status->isPasskeyValid()));
+    }
+  }
+}
+
+bool onRefreshBlinds(void *args)
+{
+  int pos = 0;   // in MSB 100 == open and 200 == closed
+  int HApos = 0; // in HA 0 == closed and 100 == open
+
+  if (BlindsRefreshNow)
+  {
+    // BlindsRefreshNow = false;
+    for (int i = 0; i < blindCount; i++)
+    {
+      blindsList[i]->refresh();
+      blindsList[i]->refreshSensors();
+      blindsList[i]->refreshStatus();
+      // coverList[i]->setName(blindsList[i]->name());
+      // sensorList[i]->setName(blindsList[i]->name());
+      sensorList[i]->setValue(blindsList[i]->sensors->getBatteryPercentage());
+
+      pos = blindsList[i]->getAngle();
+
+      HApos = 100 - (pos - 100);
+      if (pos > 95 && pos < 105)
+      {
+        coverList[i]->setState(HACover::StateOpen);
+      }
+      else if (pos > 195 || pos < 5)
+      {
+        coverList[i]->setState(HACover::StateClosed);
+      }
+
+      coverList[i]->setPosition(HApos);
+      chargingSensorList[i]->setState(blindsList[i]->status->isChargingSolar() || blindsList[i]->status->isChargingUSB());
+    }
+  }
+  return true;
+}
+
+blind *findBlindByMac(const char *mac)
+{
+  blind *result = NULL;
+  DEBUG_PRINTLN("findBlindByMac - Entered Function");
+
+  DEBUG_PRINTLN(" -- searching for mac: " + String(mac) + "of length = " + String(strlen(mac)));
+
+  for (int i = 0; i < blindCount; i++)
+  {
+    DEBUG_PRINTLN(" -- comparing against mac: " + String(blindsList[i]->mac()) + "of length = " + String(strlen(blindsList[i]->mac())));
+
+    if (strcmp(mac, blindsList[i]->mac()) == 0)
+    {
+      result = blindsList[i];
+      break;
+    }
+  }
+
+  return result;
 }

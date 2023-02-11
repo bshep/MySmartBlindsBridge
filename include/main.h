@@ -1,9 +1,6 @@
 #include <Arduino.h>
-#include <arduino-timer.h>
-
-#ifdef ENABLE_OTA
 #include <ArduinoOTA.h>
-#endif
+#include <arduino-timer.h>
 
 #include <BLEDevice.h>
 #include <BLEUtils.h>
@@ -12,16 +9,24 @@
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <ESPAutoWiFiConfig.h>
 #include <WebSerial.h>
 #include <ArduinoHA.h>
 
+#include "blind.h"
+#include "config.h"
+#include "Version.h"
+
+// Emit a compiler error if hardware is not compatible
 #ifndef CONFIG_BT_BLE_50_FEATURES_SUPPORTED
-#warning "Not compatible hardware"
+#error "Not compatible hardware"
 #endif
 
 
 String readFileIntoString(String filename);
 bool onRefreshBLEScan( void *args);
+bool onRefreshBlinds(void *args);
+
 bool onHandleOTA( void *args );
 
 void handle_OnConnect(AsyncWebServerRequest *request);
@@ -29,3 +34,5 @@ void handle_OnScan(AsyncWebServerRequest *request);
 void handle_OnCSS(AsyncWebServerRequest *request);
 void handle_OnRefreshBlinds(AsyncWebServerRequest *request);
 
+void onWebSerial_recvMsg(uint8_t *data, size_t len);
+blind *findBlindByMac(const char *mac);

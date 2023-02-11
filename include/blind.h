@@ -6,6 +6,7 @@
 #include <BLEUtils.h>
 #include <WebSerial.h>
 #include "blindSensors.h"
+#include "blindStatus.h"
 
 extern String DEBUGTEXT;
 
@@ -22,10 +23,11 @@ private:
 
 
     // UUIDs to control the blinds
-    std::string _KEY_UUID =     "00001409-1212-efde-1600-785feabcd123";
-    std::string _ANGLE_UUID =   "00001403-1212-efde-1600-785feabcd123";
     std::string _SERVICE_UUID = "00001400-1212-efde-1600-785feabcd123";
     std::string _NAME_UUID =    "00001401-1212-efde-1600-785feabcd123";
+    std::string _STATUS_UUID =  "00001402-1212-efde-1600-785feabcd123";
+    std::string _ANGLE_UUID =   "00001403-1212-efde-1600-785feabcd123";
+    std::string _KEY_UUID =     "00001409-1212-efde-1600-785feabcd123";
     std::string _SENSORS_UUID = "00001651-1212-efde-1600-785feabcd123";
 
     BLEClient*  _pClient;
@@ -42,7 +44,9 @@ public:
     char *name();
     void refresh();
     void refreshSensors();
+    void refreshStatus();
     blindSensors *sensors;
+    blindStatus *status;
 
     void setAngle(int newAngle);
     int getAngle();

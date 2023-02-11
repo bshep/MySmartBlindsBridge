@@ -7,11 +7,11 @@
 
 // #define ENABLE_DEBUG
 #ifdef ENABLE_DEBUG
-    #define DEBUG_PRINT(x) WebSerial.print(x)
-    #define DEBUG_PRINTLN(x) WebSerial.println(x)
+#define DEBUG_PRINT(x) WebSerial.print(x)
+#define DEBUG_PRINTLN(x) WebSerial.println(x)
 #else
-    #define DEBUG_PRINT(x)
-    #define DEBUG_PRINTLN(x)
+#define DEBUG_PRINT(x)
+#define DEBUG_PRINTLN(x)
 #endif
 
 char hostName[32] = "msb1";
@@ -26,6 +26,8 @@ AsyncWebServer debugServer(88);
 blind *blindsList[10];
 HACover *coverList[10];
 HASensorNumber *sensorList[10];
+HABinarySensor *chargingSensorList[10];
+
 int blindCount = 0;
 
 Timer<10> timer;
@@ -41,12 +43,12 @@ byte deviceMAC[18];
 void onWebSerial_recvMsg(uint8_t *data, size_t len)
 {
   DEBUG_PRINTLN("Received Data...");
-  String d = "";
-  for (int i = 0; i < len; i++)
-  {
-    d += char(data[i]);
-  }
-  DEBUG_PRINTLN(d);
+  String d = String(data, len);
+
+  WebSerial.println(d);
+
+  d.toUpperCase();
+
   if (d == "REBOOT")
   {
     DEBUG_PRINTLN("REBOOTING");
@@ -66,12 +68,25 @@ void onWebSerial_recvMsg(uint8_t *data, size_t len)
     DEBUG_PRINT("\n");
   }
 
-  if (d == "SENSORS") {
-    for (int i = 0; i < blindCount; i++) {
+  if (d == "SENSORS")
+  {
+    for (int i = 0; i < blindCount; i++)
+    {
       blindsList[i]->refreshSensors();
     }
   }
 
+  if (d == "STATUS")
+  {
+    for (int i = 0; i < blindCount; i++)
+    {
+      blindsList[i]->refreshStatus();
+
+      WebSerial.println("Status - isChargingUSB: " + String(blindsList[i]->status->isChargingUSB()));
+      WebSerial.println("Status - isChargingSolar: " + String(blindsList[i]->status->isChargingSolar()));
+      WebSerial.println("Status - isPasskeyValid: " + String(blindsList[i]->status->isPasskeyValid()));
+    }
+  }
 }
 
 bool onRefreshBlinds(void *args)
@@ -86,10 +101,10 @@ bool onRefreshBlinds(void *args)
     {
       blindsList[i]->refresh();
       blindsList[i]->refreshSensors();
+      blindsList[i]->refreshStatus();
       // coverList[i]->setName(blindsList[i]->name());
       // sensorList[i]->setName(blindsList[i]->name());
       sensorList[i]->setValue(blindsList[i]->sensors->getBatteryPercentage());
-
 
       pos = blindsList[i]->getAngle();
 
@@ -104,6 +119,7 @@ bool onRefreshBlinds(void *args)
       }
 
       coverList[i]->setPosition(HApos);
+      chargingSensorList[i]->setState(blindsList[i]->status->isChargingSolar() || blindsList[i]->status->isChargingUSB());
     }
   }
   return true;

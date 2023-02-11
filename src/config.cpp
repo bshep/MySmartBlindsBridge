@@ -9,24 +9,26 @@
 
 // #define ENABLE_DEBUG
 #ifdef ENABLE_DEBUG
-    #define DEBUG_PRINT(x) WebSerial.print(x)
-    #define DEBUG_PRINTLN(x) WebSerial.println(x)
+#define DEBUG_PRINT(x) WebSerial.print(x)
+#define DEBUG_PRINTLN(x) WebSerial.println(x)
 #else
-    #define DEBUG_PRINT(x)
-    #define DEBUG_PRINTLN(x)
+#define DEBUG_PRINT(x)
+#define DEBUG_PRINTLN(x)
 #endif
 
 extern blind *blindsList[];
 extern HACover *coverList[];
+extern HASensorNumber *sensorList[10];
+extern HABinarySensor *chargingSensorList[10];
 char coverID[10][20];
 char batterySensorID[10][30];
+char chargingSensorID[10][30];
+
 extern int blindCount;
 extern char hostName[];
 extern char ssid[];
 extern char passphrase[];
 extern bool BlindsRefreshNow;
-
-extern HASensorNumber *sensorList[10];
 
 String decode_base64(String input)
 {
@@ -222,6 +224,12 @@ void readBlindsConfig()
         sensorList[blindCount]->setUnitOfMeasurement("%");
         sensorList[blindCount]->setValue(0);
         sensorList[blindCount]->setName(blindsList[blindCount]->name());
+
+        deviceID = chargingSensorID[blindCount];
+        sprintf(deviceID, "%s_charge", blindsList[blindCount]->name(), blindCount);
+        chargingSensorList[blindCount] = new HABinarySensor(deviceID);
+        chargingSensorList[blindCount]->setName(blindsList[blindCount]->name());
+        chargingSensorList[blindCount]->setDeviceClass("battery_charging");
 
         blindCount++;
     }

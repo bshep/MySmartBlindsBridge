@@ -2,11 +2,11 @@
 
 // #define ENABLE_DEBUG
 #ifdef ENABLE_DEBUG
-    #define DEBUG_PRINT(x) WebSerial.print(x)
-    #define DEBUG_PRINTLN(x) WebSerial.println(x)
+#define DEBUG_PRINT(x) WebSerial.print(x)
+#define DEBUG_PRINTLN(x) WebSerial.println(x)
 #else
-    #define DEBUG_PRINT(x)
-    #define DEBUG_PRINTLN(x)
+#define DEBUG_PRINT(x)
+#define DEBUG_PRINTLN(x)
 #endif
 
 blind::blind(char *mac_addr, byte *key)
@@ -18,6 +18,7 @@ blind::blind(char *mac_addr, byte *key)
     strcpy(this->_name, "UNKNOWN");
     this->_needUnlock = true;
     this->sensors = new blindSensors();
+    this->status = new blindStatus();
 
     for (int i = 0; i < 6; i++)
     {
@@ -214,4 +215,17 @@ void blind::refreshSensors()
     DEBUG_PRINTLN(" - _interiorTemp=" + String(this->sensors->getInteriorTemp()));
     DEBUG_PRINTLN(" - _batteryTemp=" + String(this->sensors->getBatteryTemp()));
     DEBUG_PRINTLN(" - _rawLightValue=" + String(this->sensors->getRawLightValue()));
+}
+
+void blind::refreshStatus()
+{
+    this->unlock();
+
+    std::string statusValue = this->_pClient->getValue(this->_SERVICE_UUID, this->_STATUS_UUID);
+
+    const char *statValueChar = statusValue.c_str();
+    u_int32_t statusValueLong = (statValueChar[3] << 24) + (statValueChar[2] << 16) + (statValueChar[1] << 8) + statValueChar[0];
+    this->status->updateStatus(statusValueLong);
+
+    DEBUG_PRINTLN("StatusValue: " + String(statusValueLong, 16));
 }

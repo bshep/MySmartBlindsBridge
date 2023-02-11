@@ -9,3 +9,4 @@ data/wifi.cfg
 src/config_info.txt
 
 .DS_Store
+data/*.disabled

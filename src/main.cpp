@@ -31,6 +31,8 @@ UMS3 ums3;
 void setup()
 {
   ums3.begin();
+  ums3.setPixelPower(true);
+
   Serial.begin(115200);
 
   if (!LittleFS.begin())
@@ -42,19 +44,12 @@ void setup()
     Serial.println("LittleFS Initialized");
   }
 
-  ums3.setPixelPower(true);
+  WiFi.setHostname(hostName);
+
   setESPAutoWiFiConfigDebugOut(Serial);
   if (ESPAutoWiFiConfigSetup(-RGB_DATA, true, 0))
   {
     return;
-  }
-
-  WiFi.setHostname(hostName);
-
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(100);
-    Serial.println("Wifi Connecting...");
   }
 
   WebSerial.begin(&debugServer);

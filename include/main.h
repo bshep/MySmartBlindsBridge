@@ -12,6 +12,7 @@
 #include <ESPAutoWiFiConfig.h>
 #include <WebSerial.h>
 #include <ArduinoHA.h>
+#include <UMS3.h>
 
 #include "blind.h"
 #include "config.h"
@@ -20,6 +21,15 @@
 // Emit a compiler error if hardware is not compatible
 #ifndef CONFIG_BT_BLE_50_FEATURES_SUPPORTED
 #error "Not compatible hardware"
+#endif
+
+
+#ifdef ENABLE_DEBUG
+#define DEBUG_PRINT(x) WebSerial.print(x)
+#define DEBUG_PRINTLN(x) WebSerial.println(x)
+#else
+#define DEBUG_PRINT(x)
+#define DEBUG_PRINTLN(x)
 #endif
 
 

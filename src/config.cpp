@@ -72,41 +72,6 @@ String passkeyToString(byte *passkey)
     return passkeyString;
 }
 
-void readWIFIConfig()
-{
-    File wifiConfigFile = LittleFS.open("/wifi.cfg", "r");
-    unsigned char tmpString[200] = "";
-
-    while (wifiConfigFile.available())
-    {
-        String currLine = wifiConfigFile.readStringUntil('\n');
-        if (currLine.startsWith("SSID:"))
-        {
-            decode_base64((const unsigned char *)currLine.substring(currLine.indexOf(":") + 1).c_str(), (unsigned char *)ssid);
-            // ssid = std::string(decode_base64(currLine.substring(currLine.indexOf(":") + 1)).c_str());
-            Serial.print("SSID: ");
-            Serial.println(ssid);
-        }
-
-        if (currLine.startsWith("passphrase:"))
-        {
-            decode_base64((const unsigned char *)currLine.substring(currLine.indexOf(":") + 1).c_str(), (unsigned char *)passphrase);
-            // passphrase = std::string(decode_base64(currLine.substring(currLine.indexOf(":") + 1)).c_str());
-            Serial.print("passphrase: ");
-            Serial.println(passphrase);
-        }
-
-        if (currLine.startsWith("hostname:"))
-        {
-            strcpy(hostName, currLine.substring(currLine.indexOf(":") + 1).c_str());
-            // hostName = std::string(currLine.substring(currLine.indexOf(":") + 1).c_str());
-            Serial.print("hostname: ");
-            Serial.println(hostName);
-        }
-    }
-    wifiConfigFile.close();
-}
-
 int findBlindIndexFromHACover(HACover *cover)
 {
     for (int i = 0; i < blindCount; i++)
@@ -177,6 +142,11 @@ void onCoverPosition(HANumeric position, HACover *sender)
 
 void readBlindsConfig()
 {
+    if (!LittleFS.exists("/blinds.cfg"))
+    {
+        Serial.println("readBlindsConfig(): file blinds.cfg does not exist");
+        return;
+    }
     File blindsConfigFile = LittleFS.open("/blinds.cfg", "r");
     unsigned char tmpString[200] = "";
 

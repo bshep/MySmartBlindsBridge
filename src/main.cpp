@@ -1,18 +1,8 @@
 #include "main.h"
 
-
 // #define ENABLE_DEBUG
-#ifdef ENABLE_DEBUG
-#define DEBUG_PRINT(x) WebSerial.print(x)
-#define DEBUG_PRINTLN(x) WebSerial.println(x)
-#else
-#define DEBUG_PRINT(x)
-#define DEBUG_PRINTLN(x)
-#endif
 
-char hostName[32] = "msb1";
-char ssid[32];
-char passphrase[64];
+char hostName[32] = "msb2";
 
 bool BlindsRefreshNow = true;
 
@@ -36,8 +26,11 @@ HADevice device;
 HAMqtt mqtt(client, device, 20);
 byte deviceMAC[18];
 
+UMS3 ums3;
+
 void setup()
 {
+  ums3.begin();
   Serial.begin(115200);
 
   if (!LittleFS.begin())
@@ -49,9 +42,14 @@ void setup()
     Serial.println("LittleFS Initialized");
   }
 
-  readWIFIConfig();
+  ums3.setPixelPower(true);
+  setESPAutoWiFiConfigDebugOut(Serial);
+  if (ESPAutoWiFiConfigSetup(-RGB_DATA, true, 0))
+  {
+    return;
+  }
+
   WiFi.setHostname(hostName);
-  WiFi.begin(ssid, passphrase);
 
   while (WiFi.status() != WL_CONNECTED)
   {
@@ -96,9 +94,12 @@ void setup()
 
 void loop()
 {
-  timer.tick();
-  ArduinoOTA.handle();
-  mqtt.loop();
+  if (!ESPAutoWiFiConfigLoop())
+  {
+    timer.tick();
+    ArduinoOTA.handle();
+    mqtt.loop();
+  }
 }
 
 void handle_OnRefreshBlinds(AsyncWebServerRequest *request)

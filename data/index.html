@@ -13,7 +13,15 @@
         <a class="button" href="/?cmd=closeAll">Close All</a>
         <a class="button" href="/?cmd=openAll">Open All</a>
 
-        <h2><!-- DEBUGTEXT --></h2>
+        <form id="myHostnameForm">Hostname*: <input class="input" type="text" id="hostname" value="<!-- HOSTNAME-->"/></form>
+        <a class="button" id="myHostNameButton">Save</a>
 
+        <form id="myBrokerAddressForm">Broker Address*: <input class="input" type="text" id="brokerAddress" value="<!-- BROKERADDRESS-->"" /></form>
+        <a class="button" id="myBrokerAddressButton">Save</a>
+    
+        <a class="button" href="/reboot">Reboot</a>
+        <p>Items with * require reboot for changes to take effect.</p>
+        <h2><!-- DEBUGTEXT --></h2>
+        <script src="/script.js"></script>
     </body>
 </html>

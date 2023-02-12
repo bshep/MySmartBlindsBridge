@@ -12,7 +12,11 @@
 #include <ESPAutoWiFiConfig.h>
 #include <WebSerial.h>
 #include <ArduinoHA.h>
+#include <SafeString.h>
+
+#if defined(ARDUINO_TINYS3) || defined(ARDUINO_PROS3) || defined(ARDUINO_FEATHERS3)
 #include <UMS3.h>
+#endif
 
 #include "blind.h"
 #include "config.h"
@@ -23,7 +27,6 @@
 #error "Not compatible hardware"
 #endif
 
-
 #ifdef ENABLE_DEBUG
 #define DEBUG_PRINT(x) WebSerial.print(x)
 #define DEBUG_PRINTLN(x) WebSerial.println(x)
@@ -32,16 +35,15 @@
 #define DEBUG_PRINTLN(x)
 #endif
 
-
-String readFileIntoString(String filename);
-bool onRefreshBLEScan( void *args);
+const String readFileIntoString(String filename);
+bool onRefreshBLEScan(void *args);
 bool onRefreshBlinds(void *args);
 
-bool onHandleOTA( void *args );
+bool onHandleOTA(void *args);
 
 void handle_OnConnect(AsyncWebServerRequest *request);
 void handle_OnScan(AsyncWebServerRequest *request);
-void handle_OnCSS(AsyncWebServerRequest *request);
+void handle_OnReturnFile(AsyncWebServerRequest *request);
 void handle_OnRefreshBlinds(AsyncWebServerRequest *request);
 
 void onWebSerial_recvMsg(uint8_t *data, size_t len);

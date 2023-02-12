@@ -1,10 +1,11 @@
+#define ENABLE_DEBUG
+
 #include "main.h"
 
-// #define ENABLE_DEBUG
-
-char hostName[32] = "msb2";
+char hostName[32] = "";
 
 bool BlindsRefreshNow = true;
+bool rebootFlag = false;
 
 AsyncWebServer webServer(80);
 AsyncWebServer debugServer(88);
@@ -20,7 +21,7 @@ Timer<10> timer;
 
 String DEBUGTEXT;
 
-#define BROKER_ADDR "192.168.2.222"
+char BROKER_ADDR[32] = "";
 WiFiClient client;
 HADevice device;
 HAMqtt mqtt(client, device, 20);
@@ -30,11 +31,13 @@ UMS3 ums3;
 
 void setup()
 {
+  // Init UMS3 TinyS3 board
   ums3.begin();
   ums3.setPixelPower(true);
 
   Serial.begin(115200);
 
+  // Init FS
   if (!LittleFS.begin())
   {
     Serial.println("ERROR WITH FILESYSTEM");
@@ -44,6 +47,19 @@ void setup()
     Serial.println("LittleFS Initialized");
   }
 
+  WiFi.macAddress(deviceMAC);
+  // Load hostname from config file
+  strncpy(hostName, readFileIntoString("/hostname").c_str(), 32);
+  // IF file empty or does not exist then set hostname to msbXXXXXX where X's are the first 3 bytes of the mac address
+  if (strncmp(hostName, "", 32) == 0)
+  {
+    snprintf(hostName, 32, "msb%X%X%X", deviceMAC[0], deviceMAC[1], deviceMAC[2]);
+  }
+
+  Serial.print("Hostname set to:");
+  Serial.println(hostName);
+
+  // Init WiFi
   WiFi.setHostname(hostName);
 
   setESPAutoWiFiConfigDebugOut(Serial);
@@ -52,9 +68,12 @@ void setup()
     return;
   }
 
+  // Init WebSerial Debug Console
   WebSerial.begin(&debugServer);
   WebSerial.msgCallback(onWebSerial_recvMsg);
+  debugServer.begin();
 
+  // Setup OTA Update
   ArduinoOTA.begin();
 
   ArduinoOTA.onStart([]()
@@ -64,39 +83,52 @@ void setup()
   ArduinoOTA.onEnd([]()
                    { DEBUG_PRINTLN("OTA Finished"); });
 
+  // Init BLE Subsystem
   BLEDevice::init(hostName);
 
+  // Init WebServer to handle requests
   webServer.on("/", handle_OnConnect);
   webServer.on("/refresh", handle_OnRefreshBlinds);
-  webServer.on("/style.css", handle_OnCSS);
+  webServer.on("/style.css", handle_OnReturnFile);
+  webServer.on("/script.js", handle_OnReturnFile);
+  webServer.on("/reboot", [](AsyncWebServerRequest *req)
+               {
+                rebootFlag = true; 
+                req->redirect("/"); 
+                });
   webServer.begin();
 
-  debugServer.begin();
-
-  // set device's details (optional)
-  // Unique ID must be set!
-  WiFi.macAddress(deviceMAC);
+  // Init HA and MQTT services
   device.setUniqueId(deviceMAC, sizeof(deviceMAC));
   device.setName("MySmartBlindsBridge MDNS");
   device.setSoftwareVersion("1.0.0");
   device.enableLastWill();
-  mqtt.begin(BROKER_ADDR);
 
+  // If BROKER_ADDR unset, skip starting the mqtt server
+  strncpy(BROKER_ADDR, readFileIntoString("/brokeraddress").c_str(), 32);
+  Serial.print("BrokerAddress set to:");
+  Serial.println(BROKER_ADDR);
+  if (strncmp(BROKER_ADDR, "", 32) != 0)
+  {
+    mqtt.begin(BROKER_ADDR);
+  }
+
+  // Read in the configuration of known blinds and begin refreshing them
   readBlindsConfig();
-
   timer.every(1000, onRefreshBlinds);
 }
 
 void loop()
 {
-  if (!ESPAutoWiFiConfigLoop())
+  if (!ESPAutoWiFiConfigLoop()) // Skips below if WiFi not configured
   {
-    timer.tick();
-    ArduinoOTA.handle();
-    mqtt.loop();
+    timer.tick();        // Service timers
+    ArduinoOTA.handle(); // Handle OTA if any
+    mqtt.loop();         // Handle MQTT
   }
 }
 
+// Handles requests to refresh blinds
 void handle_OnRefreshBlinds(AsyncWebServerRequest *request)
 {
   request->redirect("/");
@@ -152,6 +184,32 @@ void handle_HTTPArgs(AsyncWebServerRequest *request)
           }
         }
       }
+
+      if (cmd == "hostname")
+      {
+        DEBUG_PRINTLN("Request to set hostname");
+        String myValue = request->arg("value");
+        if (myValue != "")
+        {
+          File myFile = LittleFS.open("/hostname", "w", true);
+          myFile.print(myValue);
+          myFile.close();
+          strncpy(hostName, myValue.c_str(), 32);
+        }
+      }
+
+      if (cmd == "brokerAddress")
+      {
+        DEBUG_PRINTLN("Request to set brokerAddress");
+        String myValue = request->arg("value");
+        if (request->arg("value") != "")
+        {
+          File myFile = LittleFS.open("/brokeraddress", "w", true);
+          myFile.print(myValue);
+          myFile.close();
+          strncpy(BROKER_ADDR, myValue.c_str(), 32);
+        }
+      }
     }
   }
   else
@@ -163,6 +221,11 @@ void handle_HTTPArgs(AsyncWebServerRequest *request)
 void handle_OnConnect(AsyncWebServerRequest *request)
 {
   DEBUG_PRINTLN("HTTP Request for: " + request->url());
+
+  // Need to delay reboot until page is refreshed, otherwise can cause us to stay on the /reboot page and cause continous reboots everytime it reloads
+  if (rebootFlag) {
+    ESP.restart();
+  }
 
   if (request->args() > 0)
   {
@@ -198,29 +261,43 @@ void handle_OnConnect(AsyncWebServerRequest *request)
   DEBUGTEXT = "<p>Version: " + String(VERSION) + " </p>";
   DEBUGTEXT += "<p>Built on: " + String(BUILD_TIMESTAMP) + " </p>";
 
+  tmp.replace("<!-- HOSTNAME-->", hostName);
+  tmp.replace("<!-- BROKERADDRESS-->", BROKER_ADDR);
   tmp.replace("<!-- DEVICES -->", tmpDevices);
   tmp.replace("<!-- DEBUGTEXT -->", DEBUGTEXT);
 
   request->send(200, "text/html", tmp);
 }
 
-void handle_OnCSS(AsyncWebServerRequest *request)
+void handle_OnReturnFile(AsyncWebServerRequest *request)
 {
   DEBUG_PRINTLN("HTTP Request for: " + request->url());
-  request->send(200, "text/css", readFileIntoString("/style.css"));
+  request->send(200, "text/css", readFileIntoString(request->url()));
 }
 
-String readFileIntoString(String filename)
+const String readFileIntoString(String filename)
 {
-  String tmpStr = "";
-  File tmpFile = LittleFS.open(filename, "r");
+  static String tmpStr;
+  File tmpFile;
 
-  while (tmpFile.available())
+  tmpStr = "";
+
+  if (LittleFS.exists(filename))
   {
-    tmpStr += tmpFile.readString();
-  }
 
-  tmpFile.close();
+    tmpFile = LittleFS.open(filename, "r");
+
+    while (tmpFile.available())
+    {
+      tmpStr += tmpFile.readString();
+    }
+
+    tmpFile.close();
+  }
+  else
+  {
+    tmpStr = "";
+  }
 
   return tmpStr;
 }

@@ -18,11 +18,12 @@
 
 extern blind *blindsList[];
 extern HACover *coverList[];
-extern HASensorNumber *sensorList[10];
-extern HABinarySensor *chargingSensorList[10];
-char coverID[10][20];
-char batterySensorID[10][30];
-char chargingSensorID[10][30];
+extern HASensorNumber *sensorList[];
+extern HABinarySensor *chargingSensorList[];
+
+char coverID[HA_MAXDEVICES][ID_MAXLEN];
+char batterySensorID[HA_MAXDEVICES][ID_MAXLEN];
+char chargingSensorID[HA_MAXDEVICES][ID_MAXLEN];
 
 extern int blindCount;
 extern char hostName[];
@@ -55,21 +56,17 @@ void decodeBlindsMac(String encodedMac, char *decMac)
             decodedMac += ":";
     }
 
-    strncpy(decMac, decodedMac.c_str(), 18);
+    strncpy(decMac, decodedMac.c_str(), HA_MACLENGTH);
 }
 
-String passkeyToString(byte *passkey)
+void passkeyToString(byte *passkey, String &passkeyString)
 {
-    char tmpStr[10] = "";
-    String passkeyString = "";
+    passkeyString = "";
 
     for (int i = 0; i < 6; i++)
     {
-        sprintf(tmpStr, "%x", passkey[i]);
-        passkeyString += String(tmpStr);
+        passkeyString += String(passkey, 16);
     }
-
-    return passkeyString;
 }
 
 int findBlindIndexFromHACover(HACover *cover)
@@ -160,14 +157,19 @@ void readBlindsConfig()
 
         Serial.println("BlindsConfig - mac - " + encMac + " - passkey - " + encPasskey);
 
-        char decMac[18];
+        char decMac[HA_MACLENGTH];
         decodeBlindsMac(encMac, decMac);
         byte decPasskey[6];
         decode_base64((byte *)encPasskey.c_str(), decPasskey);
 
         Serial.print(" -- Decoded MAC: ");
         Serial.println(decMac);
-        Serial.println(" -- Decoded Passkey: " + passkeyToString(decPasskey));
+        Serial.print(" -- Decoded Passkey: ");
+        {
+            String decPasskeyText;
+            passkeyToString(decPasskey, decPasskeyText);
+            Serial.println(decPasskeyText);
+        }
 
         blindsList[blindCount] = new blind(decMac, decPasskey);
         blindsList[blindCount]->refresh();

@@ -9,10 +9,10 @@ bool BlindsRefreshNow = true;
 AsyncWebServer webServer(80);
 AsyncWebServer debugServer(88);
 
-blind *blindsList[10];
-HACover *coverList[10];
-HASensorNumber *sensorList[10];
-HABinarySensor *chargingSensorList[10];
+blind *blindsList[HA_MAXDEVICES];
+HACover *coverList[HA_MAXDEVICES];
+HASensorNumber *sensorList[HA_MAXDEVICES];
+HABinarySensor *chargingSensorList[HA_MAXDEVICES];
 
 int blindCount = 0;
 
@@ -23,8 +23,8 @@ String DEBUGTEXT;
 #define BROKER_ADDR "192.168.2.222"
 WiFiClient client;
 HADevice device;
-HAMqtt mqtt(client, device, 20);
-byte deviceMAC[18];
+HAMqtt mqtt(client, device, HA_MAXDEVICES + 3);
+byte deviceMAC[HA_MACLENGTH];
 
 UMS3 ums3;
 
@@ -244,7 +244,7 @@ void onWebSerial_recvMsg(uint8_t *data, size_t len)
   if (d == "PRINTMAC")
   {
     DEBUG_PRINT("DEVICE MAC : ");
-    for (int i = 0; i < 18; i++)
+    for (int i = 0; i < HA_MACLENGTH; i++)
     {
       char byteStr[10];
       sprintf(byteStr, "%x", deviceMAC[i]);

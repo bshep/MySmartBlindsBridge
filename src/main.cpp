@@ -2,7 +2,7 @@
 
 #include "main.h"
 
-char hostName[32] = "";
+cSF(hostName, 32, "");
 
 bool BlindsRefreshNow = true;
 bool rebootFlag = false;
@@ -10,21 +10,22 @@ bool rebootFlag = false;
 AsyncWebServer webServer(80);
 AsyncWebServer debugServer(88);
 
-blind *blindsList[10];
-HACover *coverList[10];
-HASensorNumber *sensorList[10];
-HABinarySensor *chargingSensorList[10];
+blind *blindsList[HA_MAXDEVICES];
+HACover *coverList[HA_MAXDEVICES];
+HASensorNumber *sensorList[HA_MAXDEVICES];
+HABinarySensor *chargingSensorList[HA_MAXDEVICES];
 
 int blindCount = 0;
 
 Timer<10> timer;
 
-String DEBUGTEXT;
+cSF(DEBUGTEXT, 1024, "");
+cSF(BROKER_ADDR, 32, "");
+cSF(blindsConfig, 1024);
 
-char BROKER_ADDR[32] = "";
 WiFiClient client;
 HADevice device;
-HAMqtt mqtt(client, device, 20);
+HAMqtt mqtt(client, device, HA_MAXDEVICES + 3);
 byte deviceMAC[18];
 
 UMS3 ums3;
@@ -49,18 +50,18 @@ void setup()
 
   WiFi.macAddress(deviceMAC);
   // Load hostname from config file
-  strncpy(hostName, readFileIntoString("/hostname").c_str(), 32);
+  readFileIntoString("/hostname", hostName);
   // IF file empty or does not exist then set hostname to msbXXXXXX where X's are the first 3 bytes of the mac address
-  if (strncmp(hostName, "", 32) == 0)
+  if (hostName == "")
   {
-    snprintf(hostName, 32, "msb%X%X%X", deviceMAC[0], deviceMAC[1], deviceMAC[2]);
+    hostName.printf("msb%X%X%X", deviceMAC[0], deviceMAC[1], deviceMAC[2]);
   }
 
   Serial.print("Hostname set to:");
   Serial.println(hostName);
 
   // Init WiFi
-  WiFi.setHostname(hostName);
+  WiFi.setHostname(hostName.c_str());
 
   setESPAutoWiFiConfigDebugOut(Serial);
   if (ESPAutoWiFiConfigSetup(-RGB_DATA, true, 0))
@@ -84,7 +85,7 @@ void setup()
                    { DEBUG_PRINTLN("OTA Finished"); });
 
   // Init BLE Subsystem
-  BLEDevice::init(hostName);
+  BLEDevice::init(hostName.c_str());
 
   // Init WebServer to handle requests
   webServer.on("/", handle_OnConnect);
@@ -94,8 +95,7 @@ void setup()
   webServer.on("/reboot", [](AsyncWebServerRequest *req)
                {
                 rebootFlag = true; 
-                req->redirect("/"); 
-                });
+                req->redirect("/"); });
   webServer.begin();
 
   // Init HA and MQTT services
@@ -105,12 +105,12 @@ void setup()
   device.enableLastWill();
 
   // If BROKER_ADDR unset, skip starting the mqtt server
-  strncpy(BROKER_ADDR, readFileIntoString("/brokeraddress").c_str(), 32);
+  readFileIntoString("/brokeraddress", BROKER_ADDR);
   Serial.print("BrokerAddress set to:");
   Serial.println(BROKER_ADDR);
-  if (strncmp(BROKER_ADDR, "", 32) != 0)
+  if (BROKER_ADDR == "")
   {
-    mqtt.begin(BROKER_ADDR);
+    mqtt.begin(BROKER_ADDR.c_str());
   }
 
   // Read in the configuration of known blinds and begin refreshing them
@@ -194,7 +194,7 @@ void handle_HTTPArgs(AsyncWebServerRequest *request)
           File myFile = LittleFS.open("/hostname", "w", true);
           myFile.print(myValue);
           myFile.close();
-          strncpy(hostName, myValue.c_str(), 32);
+          hostName.clear().printf("%s", myValue.c_str());
         }
       }
 
@@ -207,7 +207,21 @@ void handle_HTTPArgs(AsyncWebServerRequest *request)
           File myFile = LittleFS.open("/brokeraddress", "w", true);
           myFile.print(myValue);
           myFile.close();
-          strncpy(BROKER_ADDR, myValue.c_str(), 32);
+          BROKER_ADDR.clear().printf("%s", myValue.c_str());
+        }
+      }
+
+      if (cmd == "blindsConfig")
+      {
+        DEBUG_PRINTLN("Request to set blindsConfig");
+        String myValue = request->arg("value");
+        if (request->arg("value") != "")
+        {
+          File myFile = LittleFS.open("/blinds.cfg", "w", true);
+          myFile.print(myValue);
+          myFile.close();
+          blindsConfig.clear().printf("%s", myValue.c_str());
+          DEBUG_PRINTLN(blindsConfig.c_str());
         }
       }
     }
@@ -218,12 +232,66 @@ void handle_HTTPArgs(AsyncWebServerRequest *request)
   }
 }
 
+String handle_OnConnectProcessor(const String &var)
+{
+  if (var == "HOSTNAME")
+  {
+    return F(hostName.c_str());
+  }
+
+  if (var == "BROKERADDRESS")
+  {
+    return F(BROKER_ADDR.c_str());
+  }
+
+  if (var == "DEVICES")
+  {
+    cSF(tmpDevices, 4096, "");
+    blind *myblind;
+    tmpDevices.printf("<h2>Total Found %i </h2>", blindCount);
+    tmpDevices.print("<table class=\"table\">");
+    tmpDevices.print("<thead><tr><td>Name</td><td>Angle</td><td>Controls</td></tr></thead>");
+
+    for (int i = 0; i < blindCount; i++)
+    {
+      myblind = blindsList[i];
+
+      tmpDevices.print("<tr>");
+      tmpDevices.printf("<td>%s</td>", myblind->name());
+      tmpDevices.printf("<td>%i</td>", myblind->getAngle());
+      tmpDevices.printf("<td><a class=\"button\" href=\"/?cmd=open&mac=%s\">Open</a>", myblind->mac());
+      tmpDevices.printf("<a class=\"button\" href=\"/?cmd=close&mac=%s\">Close</a></td>", myblind->mac());
+
+      tmpDevices.print("</tr>");
+    }
+    tmpDevices.print("</table>");
+
+    return F(tmpDevices.c_str());
+  }
+
+  if (var == "BLINDSCONFIG")
+  {
+    return (F(blindsConfig.c_str()));
+  }
+
+  if (var == "DEBUGTEXT")
+  {
+    DEBUGTEXT.clear();
+    DEBUGTEXT.printf("<p>Version: %s</p>", VERSION);
+    DEBUGTEXT.printf("<p>Built on: %s</p>", BUILD_TIMESTAMP);
+    return F(DEBUGTEXT.c_str());
+  }
+
+  return String();
+}
+
 void handle_OnConnect(AsyncWebServerRequest *request)
 {
   DEBUG_PRINTLN("HTTP Request for: " + request->url());
 
   // Need to delay reboot until page is refreshed, otherwise can cause us to stay on the /reboot page and cause continous reboots everytime it reloads
-  if (rebootFlag) {
+  if (rebootFlag)
+  {
     ESP.restart();
   }
 
@@ -234,53 +302,19 @@ void handle_OnConnect(AsyncWebServerRequest *request)
     return;
   }
 
-  String tmp = readFileIntoString("/index.html");
-  String tmpDevices = "";
-  blind *myblind;
-
-  // DEBUGTEXT = "<h2>SSID: " + String(ssid) + "</h2>";
-  // DEBUGTEXT += "<h2>PASSPHRASE: " + String(passphrase) + "</h2>";
-
-  tmpDevices += "<h2>Total Found " + String(blindCount) + "</h2>";
-  tmpDevices += "<table class=\"table\">";
-  tmpDevices += "<thead><tr><td>Name</td><td>Angle</td><td>Controls</td></tr></thead>";
-
-  for (int i = 0; i < blindCount; i++)
-  {
-    myblind = blindsList[i];
-
-    tmpDevices += "<tr>";
-    tmpDevices += "<td>" + String(myblind->name()) + "</td>";
-    tmpDevices += "<td>" + String(myblind->getAngle()) + "</td>";
-    tmpDevices += "<td><a class=\"button\" href=\"/?cmd=open&mac=" + String(myblind->mac()) + "\">Open</a>";
-    tmpDevices += "<a class=\"button\" href=\"/?cmd=close&mac=" + String(myblind->mac()) + "\">Close</a></td>";
-
-    tmpDevices += "</tr>";
-  }
-  tmpDevices += "</table>";
-  DEBUGTEXT = "<p>Version: " + String(VERSION) + " </p>";
-  DEBUGTEXT += "<p>Built on: " + String(BUILD_TIMESTAMP) + " </p>";
-
-  tmp.replace("<!-- HOSTNAME-->", hostName);
-  tmp.replace("<!-- BROKERADDRESS-->", BROKER_ADDR);
-  tmp.replace("<!-- DEVICES -->", tmpDevices);
-  tmp.replace("<!-- DEBUGTEXT -->", DEBUGTEXT);
-
-  request->send(200, "text/html", tmp);
+  request->send(LittleFS, "/index.html", String(), false, handle_OnConnectProcessor);
 }
 
 void handle_OnReturnFile(AsyncWebServerRequest *request)
 {
   DEBUG_PRINTLN("HTTP Request for: " + request->url());
-  request->send(200, "text/css", readFileIntoString(request->url()));
+  request->send(LittleFS, request->url());
 }
 
-const String readFileIntoString(String filename)
+void readFileIntoString(const char *filename, SafeString &result)
 {
-  static String tmpStr;
   File tmpFile;
-
-  tmpStr = "";
+  result = "";
 
   if (LittleFS.exists(filename))
   {
@@ -289,17 +323,15 @@ const String readFileIntoString(String filename)
 
     while (tmpFile.available())
     {
-      tmpStr += tmpFile.readString();
+      result.print(tmpFile.readString().c_str());
     }
 
     tmpFile.close();
   }
   else
   {
-    tmpStr = "";
+    result = "";
   }
-
-  return tmpStr;
 }
 
 void onWebSerial_recvMsg(uint8_t *data, size_t len)

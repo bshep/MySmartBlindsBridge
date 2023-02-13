@@ -1,6 +1,6 @@
 #include "blind.h"
 
-// #define ENABLE_DEBUG
+#define ENABLE_DEBUG
 #ifdef ENABLE_DEBUG
 #define DEBUG_PRINT(x) WebSerial.print(x)
 #define DEBUG_PRINTLN(x) WebSerial.println(x)
@@ -9,21 +9,20 @@
 #define DEBUG_PRINTLN(x)
 #endif
 
-blind::blind(char *mac_addr, byte *key)
+blind::blind(const char *mac_addr, byte *key)
 {
-    strncpy(this->_mac, mac_addr, 18);
+    cSFA(sfMac, this->_mac);
+    sfMac = mac_addr;
+    cSFA(sfName, this->_name);
+    sfName = "UNKNOWN";
     this->_pClient = NULL;
     this->_newAngle = 255;
     this->_angle = 254;
-    strcpy(this->_name, "UNKNOWN");
     this->_needUnlock = true;
     this->sensors = new blindSensors();
     this->status = new blindStatus();
 
-    for (int i = 0; i < 6; i++)
-    {
-        this->_key[i] = key[i];
-    }
+    memcpy(this->_key, key, 6);
 }
 
 blind::~blind()
@@ -155,8 +154,9 @@ void blind::refresh()
     }
 
     this->_angle = tmpCharact->readUInt8();
-    DEBUG_PRINTLN("ANGLE = " + String(this->_angle));
-    DEBUG_PRINTLN(" -- oldAngle = " + String(this->_angle) + " - newAngle - " + String(this->_newAngle));
+    DEBUG_PRINTLN("ANGLE = " + this->_angle);
+    DEBUG_PRINT(" -- oldAngle = " + this->_angle);
+    DEBUG_PRINTLN(" - newAngle - " + this->_newAngle);
 
     if (this->_angle != this->_newAngle)
     {
@@ -170,7 +170,8 @@ void blind::refresh()
 void blind::_writeAngle()
 {
     DEBUG_PRINTLN("blind::_writeAngle() - Entered Function");
-    DEBUG_PRINTLN(" -- oldAngle = " + String(this->_angle) + " - newAngle - " + String(this->_newAngle));
+    DEBUG_PRINT(" -- oldAngle = " + this->_angle);
+    DEBUG_PRINTLN(" - newAngle - " + this->_newAngle);
 
     if (this->_newAngle == 255)
     {
@@ -208,24 +209,25 @@ void blind::refreshSensors()
     this->sensors->parseSensorData((byte *)sensorValue.c_str());
 
     DEBUG_PRINTLN("Sensors: ");
-    DEBUG_PRINTLN(" - batteryPercentage=" + String(this->sensors->getBatteryPercentage()));
-    DEBUG_PRINTLN(" - _batteryVoltage=" + String(this->sensors->getBatteryVoltage()));
-    DEBUG_PRINTLN(" - _batteryCharge=" + String(this->sensors->getBatteryCharge()));
-    DEBUG_PRINTLN(" - _solarPanelVoltage=" + String(this->sensors->getSolarPanelVoltage()));
-    DEBUG_PRINTLN(" - _interiorTemp=" + String(this->sensors->getInteriorTemp()));
-    DEBUG_PRINTLN(" - _batteryTemp=" + String(this->sensors->getBatteryTemp()));
-    DEBUG_PRINTLN(" - _rawLightValue=" + String(this->sensors->getRawLightValue()));
+    DEBUG_PRINTLN(" - batteryPercentage=" + this->sensors->getBatteryPercentage());
+    DEBUG_PRINTLN(" - _batteryVoltage=" + this->sensors->getBatteryVoltage());
+    DEBUG_PRINTLN(" - _batteryCharge=" + this->sensors->getBatteryCharge());
+    DEBUG_PRINTLN(" - _solarPanelVoltage=" + this->sensors->getSolarPanelVoltage());
+    DEBUG_PRINTLN(" - _interiorTemp=" + this->sensors->getInteriorTemp());
+    DEBUG_PRINTLN(" - _batteryTemp=" + this->sensors->getBatteryTemp());
+    DEBUG_PRINTLN(" - _rawLightValue=" + this->sensors->getRawLightValue());
 }
 
 void blind::refreshStatus()
 {
+    u_int32_t statusValueLong;
     this->unlock();
 
     std::string statusValue = this->_pClient->getValue(this->_SERVICE_UUID, this->_STATUS_UUID);
 
     const char *statValueChar = statusValue.c_str();
-    u_int32_t statusValueLong = (statValueChar[3] << 24) + (statValueChar[2] << 16) + (statValueChar[1] << 8) + statValueChar[0];
+    statusValueLong = (statValueChar[3] << 24) + (statValueChar[2] << 16) + (statValueChar[1] << 8) + statValueChar[0];
     this->status->updateStatus(statusValueLong);
 
-    DEBUG_PRINTLN("StatusValue: " + String(statusValueLong, 16));
+    DEBUG_PRINTLN("StatusValue: " + String(statusValueLong,16));
 }

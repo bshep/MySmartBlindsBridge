@@ -27,3 +27,12 @@ brokerAddressButton.onclick = function () {
   document.location.search =
     "cmd=brokerAddress&value=" + document.getElementById("brokerAddress").value;
 };
+
+
+var myBlindsConfigButton = document.getElementById("myBlindsConfigButton");
+myBlindsConfigButton.onclick = function () {
+  document.location.search =
+    "cmd=blindsConfig&value=" + encodeURIComponent(document.getElementById("myBlindsConfig").value);
+};
+
+

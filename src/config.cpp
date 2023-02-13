@@ -18,11 +18,12 @@
 
 extern blind *blindsList[];
 extern HACover *coverList[];
-extern HASensorNumber *sensorList[10];
-extern HABinarySensor *chargingSensorList[10];
-char coverID[10][20];
-char batterySensorID[10][30];
-char chargingSensorID[10][30];
+extern HASensorNumber *sensorList[HA_MAXDEVICES];
+extern HABinarySensor *chargingSensorList[HA_MAXDEVICES];
+
+char coverID[HA_MAXDEVICES][ID_MAXLEN];
+char batterySensorID[HA_MAXDEVICES][ID_MAXLEN];
+char chargingSensorID[HA_MAXDEVICES][ID_MAXLEN];
 
 extern int blindCount;
 extern char hostName[];
@@ -30,46 +31,37 @@ extern char ssid[];
 extern char passphrase[];
 extern bool BlindsRefreshNow;
 
-String decode_base64(String input)
+void decode_base64(String &input, String &output)
 {
-    unsigned char tmpString[200] = "";
+    unsigned char tmpString[200];
+
     decode_base64((unsigned char *)input.c_str(), tmpString);
 
-    return String((char *)tmpString);
+    output = F(tmpString);
 }
 
-void decodeBlindsMac(String encodedMac, char *decMac)
+void decodeBlindsMac(String &encodedMac, SafeString &decMac)
 {
     String decodedMac;
     String decodedMacBinary;
-    char tmpStr[20] = "";
-    decodedMacBinary = decode_base64(encodedMac);
+    decode_base64(encodedMac, decodedMacBinary);
 
-    // Serial.println(decodedMac);
     for (int i = decodedMacBinary.length() - 1; i >= 0; i--)
     {
-        sprintf(tmpStr, "%x", decodedMacBinary[i]);
-
-        decodedMac += String(tmpStr);
+        decMac.printf("%x", decodedMacBinary[i]);
         if (i != 0)
-            decodedMac += ":";
+            decMac += ":";
     }
-
-    strncpy(decMac, decodedMac.c_str(), 18);
 }
 
-String passkeyToString(byte *passkey)
+void passkeyToString(byte *passkey, SafeString &retVal)
 {
-    char tmpStr[10] = "";
-    String passkeyString = "";
+    retVal.clear();
 
     for (int i = 0; i < 6; i++)
     {
-        sprintf(tmpStr, "%x", passkey[i]);
-        passkeyString += String(tmpStr);
+        retVal.printf("%x", passkey[i]);
     }
-
-    return passkeyString;
 }
 
 int findBlindIndexFromHACover(HACover *cover)
@@ -87,7 +79,7 @@ int findBlindIndexFromHACover(HACover *cover)
 void onCoverCommand(HACover::CoverCommand cmd, HACover *sender)
 {
     int blindIndex = findBlindIndexFromHACover(sender);
-    DEBUG_PRINTLN("Blind index " + String(blindIndex));
+    DEBUG_PRINTLN("Blind index " + blindIndex);
 
     if (blindIndex >= 0)
     {
@@ -131,7 +123,7 @@ void onCoverCommand(HACover::CoverCommand cmd, HACover *sender)
 void onCoverPosition(HANumeric position, HACover *sender)
 {
     int blindIndex = findBlindIndexFromHACover(sender);
-    DEBUG_PRINTLN("Blind index " + String(blindIndex));
+    DEBUG_PRINTLN("Blind index " + blindIndex);
     DEBUG_PRINT("Set Position to: ");
     DEBUG_PRINTLN(position.toInt8());
 
@@ -142,6 +134,9 @@ void onCoverPosition(HANumeric position, HACover *sender)
 
 void readBlindsConfig()
 {
+    cSF(decMac, 17, "");
+    byte decPasskey[6];
+
     if (!LittleFS.exists("/blinds.cfg"))
     {
         Serial.println("readBlindsConfig(): file blinds.cfg does not exist");
@@ -154,28 +149,34 @@ void readBlindsConfig()
     {
         String currLine = blindsConfigFile.readStringUntil('\n');
         String encMac = currLine.substring(0, currLine.indexOf(':'));
-        // char currMac[17];
-        // strncpy(currMac,currLine.substring(0,currLine.indexOf(':')).c_str(),8);
         String encPasskey = currLine.substring(currLine.indexOf(':') + 1);
 
         Serial.println("BlindsConfig - mac - " + encMac + " - passkey - " + encPasskey);
 
-        char decMac[18];
+        decMac.clear();
         decodeBlindsMac(encMac, decMac);
-        byte decPasskey[6];
         decode_base64((byte *)encPasskey.c_str(), decPasskey);
 
         Serial.print(" -- Decoded MAC: ");
         Serial.println(decMac);
-        Serial.println(" -- Decoded Passkey: " + passkeyToString(decPasskey));
+        Serial.print(" -- Decoded Passkey: ");
+        {
+            cSF(decPasskeyString, 20);
+            passkeyToString(decPasskey, decPasskeyString);
+            Serial.println(decPasskeyString.c_str());
+        }
 
-        blindsList[blindCount] = new blind(decMac, decPasskey);
+        blindsList[blindCount] = new blind(decMac.c_str(), decPasskey);
         blindsList[blindCount]->refresh();
+        // blindCount++;
+        // continue;
 
         char *deviceID = coverID[blindCount];
-        sprintf(deviceID, "msb_Cover_%i", blindCount);
+        cSFPS(sfDeviceID, deviceID, ID_MAXLEN);
+        sfDeviceID.printf("msb_Cover_%i", blindCount);
 
-        Serial.println("Creating new HACover with name - \"" + String(deviceID) + "\"");
+        Serial.print("Creating new HACover with name - \"" + String(deviceID));
+        Serial.println("\"");
         coverList[blindCount] = new HACover(deviceID, HACover::PositionFeature);
 
         coverList[blindCount]->onCommand(onCoverCommand);

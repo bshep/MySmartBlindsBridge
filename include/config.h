@@ -5,7 +5,8 @@
 #include <LittleFS.h>
 #include <ArduinoHA.h>
 
-
+#define ID_MAXLEN 30
+#define HA_MAXDEVICES 20
 
 void readWIFIConfig();
 void readBlindsConfig();

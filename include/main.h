@@ -35,7 +35,7 @@
 #define DEBUG_PRINTLN(x)
 #endif
 
-const String readFileIntoString(String filename);
+void readFileIntoString(const char *filename, SafeString &result);
 bool onRefreshBLEScan(void *args);
 bool onRefreshBlinds(void *args);
 

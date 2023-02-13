@@ -7,21 +7,25 @@
     <body>
         <h2>Welcome!</h2>
 
-        <h3><!-- DEVICES --></h3>
-        <!-- <a class="button" href="/scan">Scan Again</a> -->
+        <h3>%DEVICES%</h3>
+        %<a class="button" href="/scan">Scan Again</a> %
         <a class="button" href="/refresh">Refresh</a>
         <a class="button" href="/?cmd=closeAll">Close All</a>
         <a class="button" href="/?cmd=openAll">Open All</a>
 
-        <form id="myHostnameForm">Hostname*: <input class="input" type="text" id="hostname" value="<!-- HOSTNAME-->"/></form>
+        <form id="myHostnameForm">Hostname*: <input class="input" type="text" id="hostname" value="%HOSTNAME%"/></form>
         <a class="button" id="myHostNameButton">Save</a>
 
-        <form id="myBrokerAddressForm">Broker Address*: <input class="input" type="text" id="brokerAddress" value="<!-- BROKERADDRESS-->"" /></form>
+        <form id="myBrokerAddressForm">Broker Address*: <input class="input" type="text" id="brokerAddress" value="%BROKERADDRESS%"" /></form>
         <a class="button" id="myBrokerAddressButton">Save</a>
     
+        <textarea id="myBlindsConfig">%BLINDSCONFIG%</textarea>
+        <a class="button" id="myBlindsConfigButton">Save</a>
+
+
         <a class="button" href="/reboot">Reboot</a>
         <p>Items with * require reboot for changes to take effect.</p>
-        <h2><!-- DEBUGTEXT --></h2>
+        <h2>%DEBUGTEXT%</h2>
         <script src="/script.js"></script>
     </body>
 </html>

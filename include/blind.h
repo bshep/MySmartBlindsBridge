@@ -5,10 +5,11 @@
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <WebSerial.h>
+#include <SafeString.h>
 #include "blindSensors.h"
 #include "blindStatus.h"
 
-extern String DEBUGTEXT;
+extern SafeString DEBUGTEXT;
 
 class blind
 {
@@ -23,12 +24,12 @@ private:
 
 
     // UUIDs to control the blinds
-    std::string _SERVICE_UUID = "00001400-1212-efde-1600-785feabcd123";
-    std::string _NAME_UUID =    "00001401-1212-efde-1600-785feabcd123";
-    std::string _STATUS_UUID =  "00001402-1212-efde-1600-785feabcd123";
-    std::string _ANGLE_UUID =   "00001403-1212-efde-1600-785feabcd123";
-    std::string _KEY_UUID =     "00001409-1212-efde-1600-785feabcd123";
-    std::string _SENSORS_UUID = "00001651-1212-efde-1600-785feabcd123";
+    const std::string _SERVICE_UUID = "00001400-1212-efde-1600-785feabcd123";
+    const std::string _NAME_UUID =    "00001401-1212-efde-1600-785feabcd123";
+    const std::string _STATUS_UUID =  "00001402-1212-efde-1600-785feabcd123";
+    const std::string _ANGLE_UUID =   "00001403-1212-efde-1600-785feabcd123";
+    const std::string _KEY_UUID =     "00001409-1212-efde-1600-785feabcd123";
+    const std::string _SENSORS_UUID = "00001651-1212-efde-1600-785feabcd123";
 
     BLEClient*  _pClient;
 
@@ -37,7 +38,7 @@ private:
     void disconnect();
     void unlock();
 public:
-    blind(char *mac_addr, byte *key);
+    blind(const char *mac_addr, byte *key);
     ~blind();
     char *mac();
     byte *key();

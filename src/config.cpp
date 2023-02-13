@@ -65,7 +65,7 @@ void passkeyToString(byte *passkey, String &passkeyString)
 
     for (int i = 0; i < 6; i++)
     {
-        passkeyString += String(passkey, 16);
+        passkeyString += String(passkey[i], 16);
     }
 }
 

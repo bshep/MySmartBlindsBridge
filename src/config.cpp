@@ -26,6 +26,7 @@ char batterySensorID[HA_MAXDEVICES][ID_MAXLEN];
 char chargingSensorID[HA_MAXDEVICES][ID_MAXLEN];
 
 extern int blindCount;
+extern String blindsConfig;
 extern char hostName[];
 extern char ssid[];
 extern char passphrase[];
@@ -146,10 +147,12 @@ void readBlindsConfig()
     }
     File blindsConfigFile = LittleFS.open("/blinds.cfg", "r");
     unsigned char tmpString[200] = "";
+    blindsConfig = "";
 
     while (blindsConfigFile.available())
     {
         String currLine = blindsConfigFile.readStringUntil('\n');
+        blindsConfig +=  currLine + "\n";
         String encMac = currLine.substring(0, currLine.indexOf(':'));
         // char currMac[17];
         // strncpy(currMac,currLine.substring(0,currLine.indexOf(':')).c_str(),8);

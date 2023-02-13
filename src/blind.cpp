@@ -1,6 +1,10 @@
 #include "blind.h"
 
 // #define ENABLE_DEBUG
+
+//Uncomment the following line for debugging purposes so we dont get stuck waiting on BLE comms
+#define DISABLE_COMMS
+
 #ifdef ENABLE_DEBUG
 #define DEBUG_PRINT(x) WebSerial.print(x)
 #define DEBUG_PRINTLN(x) WebSerial.println(x)
@@ -33,6 +37,10 @@ blind::~blind()
 bool blind::connect()
 {
     DEBUG_PRINTLN("blind::connect() - Entered Function");
+
+#ifdef DISABLE_COMMS
+    return false;
+#endif
 
     if (this->_pClient == NULL)
     {
@@ -85,12 +93,14 @@ void blind::unlock()
     if (!this->connect())
     {
         DEBUG_PRINTLN("blind::unlock() - Error - Unable to connect");
+        return;
     }
 
     BLERemoteService *tmpService = this->_pClient->getService(this->_SERVICE_UUID);
     if (tmpService == NULL)
     {
         DEBUG_PRINTLN("blind::unlock() - Could not get service");
+        return;
     }
 
     BLERemoteCharacteristic *tmpCharact = tmpService->getCharacteristic(this->_KEY_UUID);
@@ -98,6 +108,7 @@ void blind::unlock()
     if (tmpCharact == NULL)
     {
         DEBUG_PRINTLN("blind::unlock() - Could not get charecteristic");
+        return;
     }
 
     tmpCharact->writeValue(this->_key, 6, true);
@@ -122,6 +133,10 @@ char *blind::name()
 void blind::refresh()
 {
     DEBUG_PRINTLN("blind::refresh() - Entered Function");
+
+#ifdef DISABLE_COMMS
+    return;
+#endif
 
     this->unlock();
 
@@ -172,6 +187,10 @@ void blind::_writeAngle()
     DEBUG_PRINTLN("blind::_writeAngle() - Entered Function");
     DEBUG_PRINTLN(" -- oldAngle = " + String(this->_angle) + " - newAngle - " + String(this->_newAngle));
 
+#ifdef DISABLE_COMMS
+    return;
+#endif
+
     if (this->_newAngle == 255)
     {
         this->_newAngle = this->_angle;
@@ -203,6 +222,10 @@ void blind::refreshSensors()
 {
     this->unlock();
 
+#ifdef DISABLE_COMMS
+    return;
+#endif
+
     std::string sensorValue = this->_pClient->getValue(this->_SERVICE_UUID, this->_SENSORS_UUID);
 
     this->sensors->parseSensorData((byte *)sensorValue.c_str());
@@ -220,6 +243,10 @@ void blind::refreshSensors()
 void blind::refreshStatus()
 {
     this->unlock();
+
+#ifdef DISABLE_COMMS
+    return;
+#endif
 
     std::string statusValue = this->_pClient->getValue(this->_SERVICE_UUID, this->_STATUS_UUID);
 

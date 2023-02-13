@@ -19,6 +19,7 @@ int blindCount = 0;
 Timer<10> timer;
 
 String DEBUGTEXT;
+String blindsConfig = "";
 
 #define BROKER_ADDR "192.168.2.222"
 WiFiClient client;
@@ -160,6 +161,74 @@ void handle_HTTPArgs(AsyncWebServerRequest *request)
   }
 }
 
+String handle_OnConnectProcessor(const String &var)
+{
+  if (var == "HOSTNAME")
+  {
+    return hostName;
+  }
+
+  if (var == "BROKERADDRESS")
+  {
+    return BROKER_ADDR;
+  }
+
+  if (var == "DEVICES")
+  {
+    String tmpDevices;
+    blind *myblind;
+    tmpDevices += "<h2>Total Found ";
+    tmpDevices += blindCount;
+    tmpDevices += " </h2>";
+    tmpDevices += "<table class=\"table\">";
+    tmpDevices += "<thead><tr><td>Name</td><td>Angle</td><td>Controls</td></tr></thead>";
+
+    for (int i = 0; i < blindCount; i++)
+    {
+      myblind = blindsList[i];
+
+      tmpDevices += "<tr>";
+      tmpDevices += "<td>";
+      tmpDevices += myblind->name();
+      tmpDevices += "</td>";
+      tmpDevices += "<td>";
+      tmpDevices += myblind->getAngle();
+      tmpDevices += "</td>";
+      tmpDevices += "<td><a class=\"button\" href=\"/?cmd=open&mac=";
+      tmpDevices += myblind->mac();
+      tmpDevices += "\">Open</a>";
+      tmpDevices += "<a class=\"button\" href=\"/?cmd=close&mac=";
+      tmpDevices += myblind->mac();
+      tmpDevices += "\">Close</a></td>";
+
+      tmpDevices += "</tr>";
+    }
+    tmpDevices += "</table>";
+
+    return F(tmpDevices.c_str());
+  }
+
+  if (var == "BLINDSCONFIG")
+  {
+    return (F(blindsConfig.c_str()));
+  }
+
+  if (var == "DEBUGTEXT")
+  {
+    DEBUGTEXT.clear();
+    DEBUGTEXT += "<p>Version:";
+    DEBUGTEXT += VERSION;
+    DEBUGTEXT += "</p>";
+
+    DEBUGTEXT += "<p>Built on:";
+    DEBUGTEXT += BUILD_TIMESTAMP;
+    DEBUGTEXT += "</p>";
+    return F(DEBUGTEXT.c_str());
+  }
+
+  return String();
+}
+
 void handle_OnConnect(AsyncWebServerRequest *request)
 {
   DEBUG_PRINTLN("HTTP Request for: " + request->url());
@@ -171,37 +240,7 @@ void handle_OnConnect(AsyncWebServerRequest *request)
     return;
   }
 
-  String tmp = readFileIntoString("/index.html");
-  String tmpDevices = "";
-  blind *myblind;
-
-  // DEBUGTEXT = "<h2>SSID: " + String(ssid) + "</h2>";
-  // DEBUGTEXT += "<h2>PASSPHRASE: " + String(passphrase) + "</h2>";
-
-  tmpDevices += "<h2>Total Found " + String(blindCount) + "</h2>";
-  tmpDevices += "<table class=\"table\">";
-  tmpDevices += "<thead><tr><td>Name</td><td>Angle</td><td>Controls</td></tr></thead>";
-
-  for (int i = 0; i < blindCount; i++)
-  {
-    myblind = blindsList[i];
-
-    tmpDevices += "<tr>";
-    tmpDevices += "<td>" + String(myblind->name()) + "</td>";
-    tmpDevices += "<td>" + String(myblind->getAngle()) + "</td>";
-    tmpDevices += "<td><a class=\"button\" href=\"/?cmd=open&mac=" + String(myblind->mac()) + "\">Open</a>";
-    tmpDevices += "<a class=\"button\" href=\"/?cmd=close&mac=" + String(myblind->mac()) + "\">Close</a></td>";
-
-    tmpDevices += "</tr>";
-  }
-  tmpDevices += "</table>";
-  DEBUGTEXT = "<p>Version: " + String(VERSION) + " </p>";
-  DEBUGTEXT += "<p>Built on: " + String(BUILD_TIMESTAMP) + " </p>";
-
-  tmp.replace("<!-- DEVICES -->", tmpDevices);
-  tmp.replace("<!-- DEBUGTEXT -->", DEBUGTEXT);
-
-  request->send(200, "text/html", tmp);
+  request->send(LittleFS, "/index.html", String(), false, handle_OnConnectProcessor);
 }
 
 void handle_OnCSS(AsyncWebServerRequest *request)

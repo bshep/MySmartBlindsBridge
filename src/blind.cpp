@@ -3,7 +3,7 @@
 // #define ENABLE_DEBUG
 
 //Uncomment the following line for debugging purposes so we dont get stuck waiting on BLE comms
-#define DISABLE_COMMS
+// #define DISABLE_COMMS
 
 #ifdef ENABLE_DEBUG
 #define DEBUG_PRINT(x) WebSerial.print(x)
@@ -39,6 +39,7 @@ bool blind::connect()
     DEBUG_PRINTLN("blind::connect() - Entered Function");
 
 #ifdef DISABLE_COMMS
+    #warning "COMMS DISABLED BLE WILL NOT WORK!!!"
     return false;
 #endif
 

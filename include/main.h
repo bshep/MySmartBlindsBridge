@@ -9,7 +9,7 @@
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
-#include <ESPAutoWiFiConfig.h>
+// #include <ESPAutoWiFiConfig.h>
 #include <WebSerial.h>
 #include <ArduinoHA.h>
 #include <UMS3.h>
@@ -36,6 +36,7 @@
 String readFileIntoString(String filename);
 bool onRefreshBLEScan( void *args);
 bool onRefreshBlinds(void *args);
+bool onReboot(void *args);
 
 bool onHandleOTA( void *args );
 

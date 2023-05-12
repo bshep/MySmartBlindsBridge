@@ -1,6 +1,6 @@
-#include "main.h"
+#define ENABLE_DEBUG
 
-// #define ENABLE_DEBUG
+#include "main.h"
 
 char hostName[32] = "msb2";
 
@@ -46,12 +46,28 @@ void setup()
   }
 
   WiFi.setHostname(hostName);
+  WiFi.begin("ssid", "password");
 
-  setESPAutoWiFiConfigDebugOut(Serial);
-  if (ESPAutoWiFiConfigSetup(-RGB_DATA, true, 0))
+  uint8_t pos = 0;
+  while (!WiFi.isConnected())
   {
-    return;
+    ums3.setPixelColor(255,0,0);
+    usleep(10000);
+    ums3.setPixelColor(0,0,0);
+    usleep(10000);
   }
+  ums3.setPixelPower(true);
+
+  ums3.setPixelColor(0,0,255);
+
+  ums3.setPixelColor(0,255,0);
+  
+
+  // setESPAutoWiFiConfigDebugOut(Serial);
+  // if (ESPAutoWiFiConfigSetup(-RGB_DATA, true, 0))
+  // {
+  //   return;
+  // }
 
   WebSerial.begin(&debugServer);
   WebSerial.msgCallback(onWebSerial_recvMsg);
@@ -86,16 +102,22 @@ void setup()
   readBlindsConfig();
 
   timer.every(1000, onRefreshBlinds);
+  timer.every(1000*60*60*24, onReboot);
 }
 
 void loop()
 {
-  if (!ESPAutoWiFiConfigLoop())
+  // if (!ESPAutoWiFiConfigLoop())
   {
     timer.tick();
     ArduinoOTA.handle();
     mqtt.loop();
   }
+}
+
+bool onReboot(void *args) {
+  ESP.restart();
+  return true;
 }
 
 void handle_OnRefreshBlinds(AsyncWebServerRequest *request)

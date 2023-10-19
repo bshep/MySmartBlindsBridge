@@ -8,7 +8,7 @@
 - ESP32 w bluetooth 5 support 
 
 ## Setup
-- ~~Edit wifi.cfg and add your base64 encoded ssid and passphrase~~ - No added config with AP mode so you can connect to ssid: *WiFiConfig* with password *12345678* and set your network settings there
+- Edit wifi.cfg and add your base64 encoded ssid and passphrase and mqtt broker info, you can leave hostname alone if you want
 - Edit blinds.cfg and add your blinds, you will need your encodedMac and encodedKey as given by running https://github.com/docBliny/smartblinds-client/blob/master/example.py with your credentials
 - Edit main.cpp and set your BROKER_ADDR to your MQTT broker
 

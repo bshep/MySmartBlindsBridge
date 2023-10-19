@@ -1,3 +1,4 @@
 SSID:BASE64ENCODED_SSID
 passphrase:BASE64ENCODED_PASSPHRASE
 hostname:msb1
+brokerAddress:192.168.2.x

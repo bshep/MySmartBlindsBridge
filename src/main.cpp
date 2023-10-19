@@ -2,8 +2,6 @@
 
 #include "main.h"
 
-char hostName[32] = "msb2";
-
 bool BlindsRefreshNow = true;
 
 AsyncWebServer webServer(80);
@@ -21,7 +19,6 @@ Timer<10> timer;
 String DEBUGTEXT;
 String blindsConfig = "";
 
-#define BROKER_ADDR "192.168.2.222"
 WiFiClient client;
 HADevice device;
 HAMqtt mqtt(client, device, HA_MAXDEVICES + 3);
@@ -29,12 +26,25 @@ byte deviceMAC[HA_MACLENGTH];
 
 UMS3 ums3;
 
+// These settings are brought in by reading wifi.cfg
+String wifiSSID, wifiPassphrase, wifiHostname, brokerAddress;
+char cstr_brokerAddress[64];
+
+bool onTurnOffLED(void *args)
+{
+  ums3.setPixelPower(false);
+  return false;
+}
+
 void setup()
 {
   ums3.begin();
   ums3.setPixelPower(true);
+  ums3.setPixelColor(255, 0, 0);
 
   Serial.begin(115200);
+  WebSerial.begin(&debugServer);
+  WebSerial.msgCallback(onWebSerial_recvMsg);
 
   if (!LittleFS.begin())
   {
@@ -45,23 +55,20 @@ void setup()
     Serial.println("LittleFS Initialized");
   }
 
-  WiFi.setHostname(hostName);
-  WiFi.begin("ssid", "password");
+  sleep(2);
+  readWifiConfig(wifiSSID, wifiPassphrase, wifiHostname, brokerAddress);
+  brokerAddress.toCharArray(cstr_brokerAddress, 64);
+
+  Serial.println("ssid = " + wifiSSID + " - passphrase = " + wifiPassphrase + " - hostname = " + wifiHostname);
+  WiFi.setHostname(wifiHostname.c_str());
+  WiFi.begin(wifiSSID.c_str(), wifiPassphrase.c_str());
 
   uint8_t pos = 0;
   while (!WiFi.isConnected())
   {
-    ums3.setPixelColor(255,0,0);
-    usleep(10000);
-    ums3.setPixelColor(0,0,0);
-    usleep(10000);
   }
-  ums3.setPixelPower(true);
 
-  ums3.setPixelColor(0,0,255);
-
-  ums3.setPixelColor(0,255,0);
-  
+  ums3.setPixelColor(0, 255, 0);
 
   // setESPAutoWiFiConfigDebugOut(Serial);
   // if (ESPAutoWiFiConfigSetup(-RGB_DATA, true, 0))
@@ -69,8 +76,8 @@ void setup()
   //   return;
   // }
 
-  WebSerial.begin(&debugServer);
-  WebSerial.msgCallback(onWebSerial_recvMsg);
+  // WebSerial.begin(&debugServer);
+  // WebSerial.msgCallback(onWebSerial_recvMsg);
 
   ArduinoOTA.begin();
 
@@ -81,7 +88,7 @@ void setup()
   ArduinoOTA.onEnd([]()
                    { DEBUG_PRINTLN("OTA Finished"); });
 
-  BLEDevice::init(hostName);
+  BLEDevice::init(wifiHostname.c_str());
 
   webServer.on("/", handle_OnConnect);
   webServer.on("/refresh", handle_OnRefreshBlinds);
@@ -95,27 +102,28 @@ void setup()
   WiFi.macAddress(deviceMAC);
   device.setUniqueId(deviceMAC, sizeof(deviceMAC));
   device.setName("MySmartBlindsBridge MDNS");
-  device.setSoftwareVersion("1.0.0");
+  device.setManufacturer("Sheplan Development");
+  device.setModel("ESP2MSB");
+  device.setSoftwareVersion(VERSION);
   device.enableLastWill();
-  mqtt.begin(BROKER_ADDR);
+  mqtt.begin(cstr_brokerAddress);
 
-  readBlindsConfig();
+  // readBlindsConfig();
 
   timer.every(1000, onRefreshBlinds);
-  timer.every(1000*60*60*24, onReboot);
+  timer.every(1000 * 60 * 60 * 24, onReboot);
+  timer.in(5000, onTurnOffLED);
 }
 
 void loop()
 {
-  // if (!ESPAutoWiFiConfigLoop())
-  {
-    timer.tick();
-    ArduinoOTA.handle();
-    mqtt.loop();
-  }
+  timer.tick();
+  ArduinoOTA.handle();
+  mqtt.loop();
 }
 
-bool onReboot(void *args) {
+bool onReboot(void *args)
+{
   ESP.restart();
   return true;
 }
@@ -187,12 +195,12 @@ String handle_OnConnectProcessor(const String &var)
 {
   if (var == "HOSTNAME")
   {
-    return hostName;
+    return wifiHostname;
   }
 
   if (var == "BROKERADDRESS")
   {
-    return BROKER_ADDR;
+    return brokerAddress;
   }
 
   if (var == "DEVICES")
@@ -331,6 +339,7 @@ void onWebSerial_recvMsg(uint8_t *data, size_t len)
       WebSerial.println("Status - isChargingUSB: " + String(blindsList[i]->status->isChargingUSB()));
       WebSerial.println("Status - isChargingSolar: " + String(blindsList[i]->status->isChargingSolar()));
       WebSerial.println("Status - isPasskeyValid: " + String(blindsList[i]->status->isPasskeyValid()));
+      WebSerial.println("Status - chargeStatus: " + String(blindsList[i]->sensors->getBatteryPercentage()));
     }
   }
 }

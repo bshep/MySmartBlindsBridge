@@ -25,8 +25,8 @@
 
 
 #ifdef ENABLE_DEBUG
-#define DEBUG_PRINT(x) WebSerial.print(x)
-#define DEBUG_PRINTLN(x) WebSerial.println(x)
+#define DEBUG_PRINT(x) WebSerial.print(x); Serial.print(x)
+#define DEBUG_PRINTLN(x) WebSerial.println(x); Serial.println(x)
 #else
 #define DEBUG_PRINT(x)
 #define DEBUG_PRINTLN(x)

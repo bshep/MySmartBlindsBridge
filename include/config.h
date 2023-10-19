@@ -9,7 +9,7 @@
 #define HA_MAXDEVICES 20
 #define HA_MACLENGTH 18
 
-void readWIFIConfig();
+void readWifiConfig(String &wifiSSID, String &wifiPassphrase, String &wifiHostname, String &brokerAddress);
 void readBlindsConfig();
 String decode_base64(String input);
 

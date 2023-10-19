@@ -36,20 +36,21 @@ extern char ssid[];
 extern char passphrase[];
 extern bool BlindsRefreshNow;
 
-String decode_base64(String input)
+void decode_base64(String input, String &output)
 {
-    unsigned char tmpString[200] = "";
-    decode_base64((unsigned char *)input.c_str(), tmpString);
+    char tmpString[200] = "";
+    decode_base64((unsigned char *)input.c_str(), (unsigned char *)tmpString);
 
-    return String((char *)tmpString);
+    output += tmpString;
+    // return String((char *)tmpString);
 }
 
-void decodeBlindsMac(String encodedMac, char *decMac)
+void decodeBlindsMac(const String encodedMac, char *decMac)
 {
     String decodedMac;
     String decodedMacBinary;
     char tmpStr[20] = "";
-    decodedMacBinary = decode_base64(encodedMac);
+    decode_base64(encodedMac, decodedMacBinary);
 
     // Serial.println(decodedMac);
     for (int i = decodedMacBinary.length() - 1; i >= 0; i--)
@@ -61,7 +62,8 @@ void decodeBlindsMac(String encodedMac, char *decMac)
             decodedMac += ":";
     }
 
-    strncpy(decMac, decodedMac.c_str(), HA_MACLENGTH);
+    decodedMac.toCharArray(decMac, HA_MACLENGTH);
+    // strncpy(decMac, decodedMac.c_str(), HA_MACLENGTH);
 }
 
 void passkeyToString(byte *passkey, String &passkeyString)
@@ -158,61 +160,73 @@ void readBlindsConfig()
         String currLine = blindsConfigFile.readStringUntil('\n');
         if (currLine != "")
         {
-            blindsConfig += currLine + "\n";
-            String encMac = currLine.substring(0, currLine.indexOf(':'));
-            // char currMac[17];
-            // strncpy(currMac,currLine.substring(0,currLine.indexOf(':')).c_str(),8);
-            String encPasskey = currLine.substring(currLine.indexOf(':') + 1);
+            unsigned int indexOfColon = currLine.indexOf(':');
 
-            DEBUG_PRINTLN("BlindsConfig - mac - " + encMac + " - passkey - " + encPasskey);
-
-            char decMac[HA_MACLENGTH];
-            decodeBlindsMac(encMac, decMac);
-            byte decPasskey[6];
-            decode_base64((byte *)encPasskey.c_str(), decPasskey);
-
-            DEBUG_PRINT(" -- Decoded MAC: ");
-            DEBUG_PRINTLN(decMac);
-            DEBUG_PRINT(" -- Decoded Passkey: ");
+            if (indexOfColon >= 0)
             {
-                String decPasskeyText;
-                passkeyToString(decPasskey, decPasskeyText);
-                DEBUG_PRINTLN(decPasskeyText);
+
+                blindsConfig += currLine + "\n";
+                String encMac = currLine.substring(0, indexOfColon);
+                String encPasskey = currLine.substring(indexOfColon + 1);
+
+                DEBUG_PRINTLN("BlindsConfig - mac - " + encMac + " - passkey - " + encPasskey);
+
+                char decMac[HA_MACLENGTH];
+                decodeBlindsMac(encMac, decMac);
+                byte decPasskey[6];
+                decode_base64((byte *)encPasskey.c_str(), decPasskey);
+
+                DEBUG_PRINT(" -- Decoded MAC: ");
+                DEBUG_PRINTLN(decMac);
+                DEBUG_PRINT(" -- Decoded Passkey: ");
+
+#ifdef ENABLE_DEBUG
+                {
+                    String decPasskeyText;
+                    passkeyToString(decPasskey, decPasskeyText);
+                    DEBUG_PRINTLN(decPasskeyText);
+                }
+#endif
+
+                blindsList[blindCount] = new blind(decMac, decPasskey);
+                blindsList[blindCount]->refresh();
+
+                char *deviceID = coverID[blindCount];
+                sprintf(deviceID, "msb_Cover_%i", blindCount);
+
+                DEBUG_PRINTLN("Creating new HACover with name - \"" + String(deviceID) + "\"");
+                coverList[blindCount] = new HACover(deviceID, HACover::PositionFeature);
+
+                coverList[blindCount]->onCommand(onCoverCommand);
+                coverList[blindCount]->onPosition(onCoverPosition);
+
+                coverList[blindCount]->setIcon("mdi:blinds-horizontal");
+                coverList[blindCount]->setName(blindsList[blindCount]->name());
+                // coverList[blindCount]->setAvailability(false);
+                coverList[blindCount]->setAvailability(true);
+                coverList[blindCount]->setState(HACover::StateStopped); // report state back to the HA
+
+                deviceID = batterySensorID[blindCount];
+                sprintf(deviceID, "%s_batt", blindsList[blindCount]->name(), blindCount);
+                sensorList[blindCount] = new HASensorNumber(deviceID);
+                sensorList[blindCount]->setDeviceClass("battery");
+                sensorList[blindCount]->setUnitOfMeasurement("%");
+                sensorList[blindCount]->setValue(0);
+                sensorList[blindCount]->setName(blindsList[blindCount]->name());
+
+                deviceID = chargingSensorID[blindCount];
+                sprintf(deviceID, "%s_charge", blindsList[blindCount]->name(), blindCount);
+                chargingSensorList[blindCount] = new HABinarySensor(deviceID);
+                chargingSensorList[blindCount]->setName(blindsList[blindCount]->name());
+                chargingSensorList[blindCount]->setState(false);
+                chargingSensorList[blindCount]->setDeviceClass("battery_charging");
+
+                blindCount++;
             }
-
-            blindsList[blindCount] = new blind(decMac, decPasskey);
-            blindsList[blindCount]->refresh();
-
-            char *deviceID = coverID[blindCount];
-            sprintf(deviceID, "msb_Cover_%i", blindCount);
-
-            DEBUG_PRINTLN("Creating new HACover with name - \"" + String(deviceID) + "\"");
-            coverList[blindCount] = new HACover(deviceID, HACover::PositionFeature);
-
-            coverList[blindCount]->onCommand(onCoverCommand);
-            coverList[blindCount]->onPosition(onCoverPosition);
-
-            coverList[blindCount]->setIcon("mdi:blinds-horizontal");
-            coverList[blindCount]->setName(blindsList[blindCount]->name());
-            coverList[blindCount]->setAvailability(false);
-            coverList[blindCount]->setAvailability(true);
-            coverList[blindCount]->setState(HACover::StateStopped); // report state back to the HA
-
-            deviceID = batterySensorID[blindCount];
-            sprintf(deviceID, "%s_batt", blindsList[blindCount]->name(), blindCount);
-            sensorList[blindCount] = new HASensorNumber(deviceID);
-            sensorList[blindCount]->setDeviceClass("battery");
-            sensorList[blindCount]->setUnitOfMeasurement("%");
-            sensorList[blindCount]->setValue(0);
-            sensorList[blindCount]->setName(blindsList[blindCount]->name());
-
-            deviceID = chargingSensorID[blindCount];
-            sprintf(deviceID, "%s_charge", blindsList[blindCount]->name(), blindCount);
-            chargingSensorList[blindCount] = new HABinarySensor(deviceID);
-            chargingSensorList[blindCount]->setName(blindsList[blindCount]->name());
-            chargingSensorList[blindCount]->setDeviceClass("battery_charging");
-
-            blindCount++;
+            else
+            {
+                Serial.println("readBlindsConfig(): line has no separator - " + currLine);
+            }
         }
     }
 
@@ -243,7 +257,9 @@ void readWifiConfig(String &wifiSSID, String &wifiPassphrase, String &wifiHostna
             {
                 String key = currLine.substring(0, indexOfColon);
                 String encValue = currLine.substring(indexOfColon + 1);
-                String decValue = decode_base64(encValue);
+                String decValue;
+                decode_base64(encValue, decValue);
+
                 if (key == "SSID")
                 {
                     wifiSSID = decValue;
@@ -274,4 +290,6 @@ void readWifiConfig(String &wifiSSID, String &wifiPassphrase, String &wifiHostna
             }
         }
     }
+
+    wifiConfigFile.close();
 }

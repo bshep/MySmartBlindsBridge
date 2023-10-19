@@ -252,6 +252,7 @@ void blind::refreshStatus()
     std::string statusValue = this->_pClient->getValue(this->_SERVICE_UUID, this->_STATUS_UUID);
 
     const char *statValueChar = statusValue.c_str();
+
     u_int32_t statusValueLong = (statValueChar[3] << 24) + (statValueChar[2] << 16) + (statValueChar[1] << 8) + statValueChar[0];
     this->status->updateStatus(statusValueLong);
 

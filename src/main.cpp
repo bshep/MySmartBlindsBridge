@@ -29,6 +29,7 @@ UMS3 ums3;
 // These settings are brought in by reading wifi.cfg
 String wifiSSID, wifiPassphrase, wifiHostname, brokerAddress;
 char cstr_brokerAddress[64];
+char cstr_hostname[32];
 
 bool onTurnOffLED(void *args)
 {
@@ -42,10 +43,14 @@ void setup()
   ums3.setPixelPower(true);
   ums3.setPixelColor(255, 0, 0);
 
+
+  // Initialize debugging
   Serial.begin(115200);
   WebSerial.begin(&debugServer);
   WebSerial.msgCallback(onWebSerial_recvMsg);
 
+
+  // InitializeFS
   if (!LittleFS.begin())
   {
     Serial.println("ERROR WITH FILESYSTEM");
@@ -58,9 +63,10 @@ void setup()
   sleep(2);
   readWifiConfig(wifiSSID, wifiPassphrase, wifiHostname, brokerAddress);
   brokerAddress.toCharArray(cstr_brokerAddress, 64);
+  wifiHostname.toCharArray(cstr_hostname, 32);
 
   Serial.println("ssid = " + wifiSSID + " - passphrase = " + wifiPassphrase + " - hostname = " + wifiHostname);
-  WiFi.setHostname(wifiHostname.c_str());
+  WiFi.setHostname(cstr_hostname);
   WiFi.begin(wifiSSID.c_str(), wifiPassphrase.c_str());
 
   uint8_t pos = 0;
@@ -69,15 +75,6 @@ void setup()
   }
 
   ums3.setPixelColor(0, 255, 0);
-
-  // setESPAutoWiFiConfigDebugOut(Serial);
-  // if (ESPAutoWiFiConfigSetup(-RGB_DATA, true, 0))
-  // {
-  //   return;
-  // }
-
-  // WebSerial.begin(&debugServer);
-  // WebSerial.msgCallback(onWebSerial_recvMsg);
 
   ArduinoOTA.begin();
 
@@ -88,7 +85,7 @@ void setup()
   ArduinoOTA.onEnd([]()
                    { DEBUG_PRINTLN("OTA Finished"); });
 
-  BLEDevice::init(wifiHostname.c_str());
+  BLEDevice::init(cstr_hostname);
 
   webServer.on("/", handle_OnConnect);
   webServer.on("/refresh", handle_OnRefreshBlinds);
@@ -108,7 +105,7 @@ void setup()
   device.enableLastWill();
   mqtt.begin(cstr_brokerAddress);
 
-  // readBlindsConfig();
+  readBlindsConfig();
 
   timer.every(1000, onRefreshBlinds);
   timer.every(1000 * 60 * 60 * 24, onReboot);

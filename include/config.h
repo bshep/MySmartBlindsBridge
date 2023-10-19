@@ -11,6 +11,6 @@
 
 void readWifiConfig(String &wifiSSID, String &wifiPassphrase, String &wifiHostname, String &brokerAddress);
 void readBlindsConfig();
-String decode_base64(String input);
+void decode_base64(const String input, String &output);
 
 #endif

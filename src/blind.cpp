@@ -2,7 +2,7 @@
 
 // #define ENABLE_DEBUG
 
-//Uncomment the following line for debugging purposes so we dont get stuck waiting on BLE comms
+// Uncomment the following line for debugging purposes so we dont get stuck waiting on BLE comms
 // #define DISABLE_COMMS
 
 #ifdef ENABLE_DEBUG
@@ -12,6 +12,14 @@
 #define DEBUG_PRINT(x)
 #define DEBUG_PRINTLN(x)
 #endif
+
+const std::string blind::_SERVICE_UUID = "00001400-1212-efde-1600-785feabcd123";
+const std::string blind::_NAME_UUID = "00001401-1212-efde-1600-785feabcd123";
+const std::string blind::_STATUS_UUID = "00001402-1212-efde-1600-785feabcd123";
+const std::string blind::_ANGLE_UUID = "00001403-1212-efde-1600-785feabcd123";
+const std::string blind::_KEY_UUID = "00001409-1212-efde-1600-785feabcd123";
+const std::string blind::_SENSORS_UUID = "00001651-1212-efde-1600-785feabcd123";
+
 
 blind::blind(char *mac_addr, byte *key)
 {
@@ -23,6 +31,7 @@ blind::blind(char *mac_addr, byte *key)
     this->_needUnlock = true;
     this->sensors = new blindSensors();
     this->status = new blindStatus();
+    this->b_connectionError = false;
 
     for (int i = 0; i < 6; i++)
     {
@@ -39,7 +48,7 @@ bool blind::connect()
     DEBUG_PRINTLN("blind::connect() - Entered Function");
 
 #ifdef DISABLE_COMMS
-    #warning "COMMS DISABLED BLE WILL NOT WORK!!!"
+#warning "COMMS DISABLED BLE WILL NOT WORK!!!"
     return false;
 #endif
 
@@ -48,13 +57,18 @@ bool blind::connect()
         this->_pClient = BLEDevice::createClient();
     }
 
-    if (this->_pClient->isConnected() == false)
+    if (this->_pClient->isConnected() == false && this->b_connectionError == false)
     {
         DEBUG_PRINT("blind::connect() - attempting to connect to: mac - ");
         DEBUG_PRINTLN(this->_mac);
         BLEAddress myAddr = BLEAddress(std::string(this->_mac));
 
         this->_pClient->connect(myAddr, BLE_ADDR_TYPE_RANDOM);
+        if (this->_pClient->isConnected() == false)
+        {
+            this->b_connectionError = true;
+            return false;
+        }
         this->_needUnlock = true;
     }
     DEBUG_PRINTLN("blind::connect() - Exit Function");
@@ -71,6 +85,16 @@ void blind::disconnect()
 bool blind::isConnected()
 {
     return this->_pClient->isConnected();
+}
+
+bool blind::connectionError()
+{
+    return this->b_connectionError;
+}
+
+void blind::resetError()
+{
+    this->b_connectionError = false;
 }
 
 void blind::setAngle(int newAngle)

@@ -20,6 +20,42 @@ const std::string blind::_ANGLE_UUID = "00001403-1212-efde-1600-785feabcd123";
 const std::string blind::_KEY_UUID = "00001409-1212-efde-1600-785feabcd123";
 const std::string blind::_SENSORS_UUID = "00001651-1212-efde-1600-785feabcd123";
 
+// struct connTaskParams
+// {
+//     BLEClient *pClient;
+//     BLEAddress *pAddr;
+//     bool connected;
+// };
+
+// void vTaskCode(void *params)
+// {
+//     connTaskParams *myParams = (connTaskParams *)params;
+
+//     myParams->pClient->connect(*myParams->pAddr, BLE_ADDR_TYPE_RANDOM);
+//     myParams->connected = true;
+//     vTaskDelete(nullptr); // important line, FreeRTOS will crash.
+// }
+
+// bool doConnect(uint8_t timeout_secs, connTaskParams *params)
+// {
+//     TaskHandle_t hTask;
+//     xTaskCreate(
+//         vTaskCode,
+//         "connect", // name of the task for debugging purposes.
+//         8192,      // stack size
+//         params,    // object passed as void* unused
+//         2,         // priority
+//         &hTask);
+
+//     uint64_t expiration = millis() + timeout_secs * 1000;
+//     while (!params->connected && millis() < expiration)
+//     {
+//         delay(500); // give the connect task a chance to run.
+//         DEBUG_PRINTLN("Waiting for task...")
+//     }
+//     vTaskDelete(hTask);
+//     return params->connected;
+// }
 
 blind::blind(char *mac_addr, byte *key)
 {
@@ -63,6 +99,13 @@ bool blind::connect()
         DEBUG_PRINTLN(this->_mac);
         BLEAddress myAddr = BLEAddress(std::string(this->_mac));
 
+        // {
+        //     connTaskParams connectionParams;
+        //     connectionParams.pClient = this->_pClient;
+        //     connectionParams.pAddr = &myAddr;
+        //     connectionParams.connected = false;
+        //     doConnect(5, &connectionParams);
+        // }
         this->_pClient->connect(myAddr, BLE_ADDR_TYPE_RANDOM);
         if (this->_pClient->isConnected() == false)
         {

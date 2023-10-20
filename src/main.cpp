@@ -105,11 +105,15 @@ void setup()
   device.enableLastWill();
   mqtt.begin(cstr_brokerAddress);
 
+  DEBUG_PRINTLN(WiFi.localIP().toString());
+  DEBUG_PRINTLN("Will now read and connenct to blinds.");
+  
   readBlindsConfig();
 
   timer.every(1000, onRefreshBlinds);
   timer.every(1000 * 60 * 60 * 24, onReboot);
   timer.in(5000, onTurnOffLED);
+
 }
 
 void loop()

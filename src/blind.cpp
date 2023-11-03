@@ -1,4 +1,5 @@
 #include "blind.h"
+#include "scanner.h"
 
 #define ENABLE_DEBUG
 
@@ -24,7 +25,7 @@ const std::string blind::_ANGLE_UUID = "00001403-1212-efde-1600-785feabcd123";
 const std::string blind::_KEY_UUID = "00001409-1212-efde-1600-785feabcd123";
 const std::string blind::_SENSORS_UUID = "00001651-1212-efde-1600-785feabcd123";
 
-extern BLEScanResults foundDevices;
+extern scanner *myBLEScanner;
 
 // struct connTaskParams
 // {
@@ -67,11 +68,11 @@ bool isScanned(BLEAddress targetAddr)
 {
     DEBUG_PRINT("isScanned(): Checking address");
     DEBUG_PRINTLN(targetAddr.toString().c_str());
-    for (int a = 0; a < foundDevices.getCount(); a++)
+    for (int a = 0; a < myBLEScanner->foundDevices.getCount(); a++)
     {
         DEBUG_PRINT(" - checking against address: ");
-        DEBUG_PRINT(foundDevices.getDevice(a).getAddress().toString().c_str());
-        if (foundDevices.getDevice(a).getAddress() == targetAddr)
+        DEBUG_PRINT(myBLEScanner->foundDevices.getDevice(a).getAddress().toString().c_str());
+        if (myBLEScanner->foundDevices.getDevice(a).getAddress() == targetAddr)
         {
             DEBUG_PRINTLN(" - MATCH");
             return true;

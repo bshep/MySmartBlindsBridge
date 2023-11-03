@@ -23,8 +23,9 @@ WiFiClient client;
 HADevice device;
 HAMqtt mqtt(client, device, HA_MAXDEVICES + 3);
 byte deviceMAC[HA_MACLENGTH];
+
 bool BLEScanNow = true;
-BLEScanResults foundDevices;
+scanner *myBLEScanner;
 
 UMS3 ums3;
 
@@ -109,8 +110,8 @@ void setup()
   DEBUG_PRINTLN(WiFi.localIP().toString());
   DEBUG_PRINTLN("Will now read and connenct to blinds.");
 
-  setupScan();
-  foundDevices = RefreshBLEScan();
+  myBLEScanner = new scanner();
+  myBLEScanner->RefreshBLEScan();
   readBlindsConfig();
 
   timer.every(1000, onRefreshBlinds);
@@ -397,7 +398,8 @@ bool onRefreshBLEScan(void *args)
 {
   if (BLEScanNow)
   {
-    foundDevices = RefreshBLEScan();
+    BLEScanNow = false;
+    myBLEScanner->RefreshBLEScan();
   }
   return true;
 }

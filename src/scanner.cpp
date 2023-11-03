@@ -6,24 +6,27 @@
 
 static const std::string BlindBLEName = "SmartBlind_DFU";
 
-int scanTime = 5; // In seconds
-BLEScan *pBLEScan;
-
-bool scanDone = false;
-
-extern bool BLEScanNow;
-
-BLEScanResults RefreshBLEScan()
-{
-    BLEScanResults res;
-    BLEScanNow = false;
-    WebSerial.println("Updating Scan Results....");
-    res = pBLEScan->start(scanTime, true);
-    WebSerial.println("Done!");
-    return res;
+scanner::scanner() {
+    this->pBLEScan = BLEDevice::getScan();
+    this->pBLEScan->setActiveScan(true);   // active scan uses more power, but get results faster
+    this->pBLEScan->setInterval(1000);
+    this->pBLEScan->setWindow(200); // less or equal setInterval value
 }
 
-void setupScan()
+scanner::~scanner() {
+    this->pBLEScan->stop();
+    this->pBLEScan->stopExtScan();
+    this->pBLEScan->clearResults();
+}
+
+void scanner::RefreshBLEScan()
+{
+    WebSerial.println("Updating Scan Results....");
+    this->foundDevices = pBLEScan->start(this->scanTime, true);
+    WebSerial.println("Done!");
+}
+
+void scanner::setupScan()
 {
     pBLEScan = BLEDevice::getScan(); // create new scan
     pBLEScan->setActiveScan(true);   // active scan uses more power, but get results faster

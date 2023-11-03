@@ -90,7 +90,8 @@ void setup()
 
   webServer.on("/", handle_OnConnect);
   webServer.on("/refresh", handle_OnRefreshBlinds);
-  webServer.on("/style.css", handle_OnCSS);
+  webServer.on("/style.css", handle_OnReturnFile);
+  webServer.on("/script.js", handle_OnReturnFile);
   webServer.on("/scan", handle_OnScan);
   webServer.begin();
 
@@ -248,6 +249,39 @@ String handle_OnConnectProcessor(const String &var)
     return (F(blindsConfig.c_str()));
   }
 
+  if (var == "BLESCANRESULTS")
+  {
+    String tmpDevices;
+
+    tmpDevices += "<h2>Nearby Devices - ";
+    tmpDevices += myBLEScanner->foundDevices.getCount();
+    tmpDevices += "</h2>";
+
+    tmpDevices += "<table class=\"table\">";
+    tmpDevices += "<thead><tr>";
+    tmpDevices += "<td>Address</td>";
+    tmpDevices += "<td>Name</td>";
+    tmpDevices += "<td>RSSI</td>";
+    tmpDevices += "</tr></thead>";
+    tmpDevices += "";
+
+    for (int a = 0; a < myBLEScanner->foundDevices.getCount(); a++)
+    {
+      BLEAdvertisedDevice tmpDevice = myBLEScanner->foundDevices.getDevice(a);
+      tmpDevices += "<tr>";
+      tmpDevices += "<td>";
+      tmpDevices += tmpDevice.getAddress().toString().c_str();
+      tmpDevices += "</td>";
+      tmpDevices += "<td>";
+      tmpDevices += tmpDevice.getName().c_str();
+      tmpDevices += "</td>";
+      tmpDevices += "<td>";
+      tmpDevices += tmpDevice.getRSSI();
+      tmpDevices += "</td>";
+    }
+    return F(tmpDevices.c_str());
+  }
+
   if (var == "DEBUGTEXT")
   {
     DEBUGTEXT.clear();
@@ -278,10 +312,18 @@ void handle_OnConnect(AsyncWebServerRequest *request)
   request->send(LittleFS, "/index.html", String(), false, handle_OnConnectProcessor);
 }
 
-void handle_OnCSS(AsyncWebServerRequest *request)
+void handle_OnReturnFile(AsyncWebServerRequest *request)
 {
   DEBUG_PRINTLN("HTTP Request for: " + request->url());
-  request->send(200, "text/css", readFileIntoString("/style.css"));
+
+  if (LittleFS.exists(request->url()))
+  {
+    request->send(LittleFS, request->url());
+  }
+  else
+  {
+    request->send(404, "text/plain", "404 - File Not found" + request->url());
+  }
 }
 
 String readFileIntoString(String filename)

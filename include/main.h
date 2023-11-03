@@ -43,7 +43,7 @@ bool onHandleOTA( void *args );
 
 void handle_OnConnect(AsyncWebServerRequest *request);
 void handle_OnScan(AsyncWebServerRequest *request);
-void handle_OnCSS(AsyncWebServerRequest *request);
+void handle_OnReturnFile(AsyncWebServerRequest *request);
 void handle_OnRefreshBlinds(AsyncWebServerRequest *request);
 
 void onWebSerial_recvMsg(uint8_t *data, size_t len);

@@ -15,6 +15,7 @@
 #include <UMS3.h>
 
 #include "blind.h"
+#include "scanner.h"
 #include "config.h"
 #include "Version.h"
 

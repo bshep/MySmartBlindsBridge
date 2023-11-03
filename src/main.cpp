@@ -4,8 +4,8 @@
 
 bool BlindsRefreshNow = true;
 
-AsyncWebServer webServer(80);
-AsyncWebServer debugServer(88);
+static AsyncWebServer webServer(80);
+static AsyncWebServer debugServer(88);
 
 blind *blindsList[HA_MAXDEVICES];
 HACover *coverList[HA_MAXDEVICES];
@@ -23,6 +23,8 @@ WiFiClient client;
 HADevice device;
 HAMqtt mqtt(client, device, HA_MAXDEVICES + 3);
 byte deviceMAC[HA_MACLENGTH];
+bool BLEScanNow = true;
+BLEScanResults foundDevices;
 
 UMS3 ums3;
 
@@ -43,12 +45,10 @@ void setup()
   ums3.setPixelPower(true);
   ums3.setPixelColor(255, 0, 0);
 
-
   // Initialize debugging
   Serial.begin(115200);
   WebSerial.begin(&debugServer);
   WebSerial.msgCallback(onWebSerial_recvMsg);
-
 
   // InitializeFS
   if (!LittleFS.begin())
@@ -90,6 +90,7 @@ void setup()
   webServer.on("/", handle_OnConnect);
   webServer.on("/refresh", handle_OnRefreshBlinds);
   webServer.on("/style.css", handle_OnCSS);
+  webServer.on("/scan", handle_OnScan);
   webServer.begin();
 
   debugServer.begin();
@@ -107,13 +108,15 @@ void setup()
 
   DEBUG_PRINTLN(WiFi.localIP().toString());
   DEBUG_PRINTLN("Will now read and connenct to blinds.");
-  
+
+  setupScan();
+  foundDevices = RefreshBLEScan();
   readBlindsConfig();
 
   timer.every(1000, onRefreshBlinds);
   timer.every(1000 * 60 * 60 * 24, onReboot);
+  timer.every(1000 * 60, onRefreshBLEScan);
   timer.in(5000, onTurnOffLED);
-
 }
 
 void loop()
@@ -295,6 +298,15 @@ String readFileIntoString(String filename)
   return tmpStr;
 }
 
+void handle_OnScan(AsyncWebServerRequest *request)
+{
+  WebSerial.println("HTTP Request for: " + request->url());
+
+  request->redirect("/");
+
+  BLEScanNow = true;
+}
+
 void onWebSerial_recvMsg(uint8_t *data, size_t len)
 {
   DEBUG_PRINTLN("Received Data...");
@@ -377,6 +389,15 @@ bool onRefreshBlinds(void *args)
       coverList[i]->setPosition(HApos);
       chargingSensorList[i]->setState(blindsList[i]->status->isChargingSolar() || blindsList[i]->status->isChargingUSB());
     }
+  }
+  return true;
+}
+
+bool onRefreshBLEScan(void *args)
+{
+  if (BLEScanNow)
+  {
+    foundDevices = RefreshBLEScan();
   }
   return true;
 }

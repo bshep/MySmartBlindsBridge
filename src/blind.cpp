@@ -1,13 +1,17 @@
 #include "blind.h"
 
-// #define ENABLE_DEBUG
+#define ENABLE_DEBUG
 
 // Uncomment the following line for debugging purposes so we dont get stuck waiting on BLE comms
 // #define DISABLE_COMMS
 
 #ifdef ENABLE_DEBUG
-#define DEBUG_PRINT(x) WebSerial.print(x)
-#define DEBUG_PRINTLN(x) WebSerial.println(x)
+#define DEBUG_PRINT(x)  \
+    WebSerial.print(x); \
+    Serial.print(x)
+#define DEBUG_PRINTLN(x)  \
+    WebSerial.println(x); \
+    Serial.println(x)
 #else
 #define DEBUG_PRINT(x)
 #define DEBUG_PRINTLN(x)
@@ -19,6 +23,8 @@ const std::string blind::_STATUS_UUID = "00001402-1212-efde-1600-785feabcd123";
 const std::string blind::_ANGLE_UUID = "00001403-1212-efde-1600-785feabcd123";
 const std::string blind::_KEY_UUID = "00001409-1212-efde-1600-785feabcd123";
 const std::string blind::_SENSORS_UUID = "00001651-1212-efde-1600-785feabcd123";
+
+extern BLEScanResults foundDevices;
 
 // struct connTaskParams
 // {
@@ -56,6 +62,27 @@ const std::string blind::_SENSORS_UUID = "00001651-1212-efde-1600-785feabcd123";
 //     vTaskDelete(hTask);
 //     return params->connected;
 // }
+
+bool isScanned(BLEAddress targetAddr)
+{
+    DEBUG_PRINT("isScanned(): Checking address");
+    DEBUG_PRINTLN(targetAddr.toString().c_str());
+    for (int a = 0; a < foundDevices.getCount(); a++)
+    {
+        DEBUG_PRINT(" - checking against address: ");
+        DEBUG_PRINT(foundDevices.getDevice(a).getAddress().toString().c_str());
+        if (foundDevices.getDevice(a).getAddress() == targetAddr)
+        {
+            DEBUG_PRINTLN(" - MATCH");
+            return true;
+        }
+        DEBUG_PRINTLN(" - NO MATCH");
+    }
+
+    DEBUG_PRINTLN(" - NO MATCHES FOUND IN SCANNED DEVICES");
+
+    return false;
+}
 
 blind::blind(char *mac_addr, byte *key)
 {
@@ -106,13 +133,17 @@ bool blind::connect()
         //     connectionParams.connected = false;
         //     doConnect(5, &connectionParams);
         // }
-        this->_pClient->connect(myAddr, BLE_ADDR_TYPE_RANDOM);
-        if (this->_pClient->isConnected() == false)
+
+        if (isScanned(myAddr))
         {
-            this->b_connectionError = true;
-            return false;
+            this->_pClient->connect(myAddr, BLE_ADDR_TYPE_RANDOM);
+            if (this->_pClient->isConnected() == false)
+            {
+                this->b_connectionError = true;
+                return false;
+            }
+            this->_needUnlock = true;
         }
-        this->_needUnlock = true;
     }
     DEBUG_PRINTLN("blind::connect() - Exit Function");
 
@@ -150,25 +181,25 @@ int blind::getAngle()
     return this->_angle;
 }
 
-void blind::unlock()
+bool blind::unlock()
 {
     if (!this->_needUnlock)
     {
         DEBUG_PRINTLN("blind::unlock() - already unlocked");
-        return;
+        return true;
     }
 
     if (!this->connect())
     {
         DEBUG_PRINTLN("blind::unlock() - Error - Unable to connect");
-        return;
+        return false;
     }
 
     BLERemoteService *tmpService = this->_pClient->getService(this->_SERVICE_UUID);
     if (tmpService == NULL)
     {
         DEBUG_PRINTLN("blind::unlock() - Could not get service");
-        return;
+        return false;
     }
 
     BLERemoteCharacteristic *tmpCharact = tmpService->getCharacteristic(this->_KEY_UUID);
@@ -176,11 +207,12 @@ void blind::unlock()
     if (tmpCharact == NULL)
     {
         DEBUG_PRINTLN("blind::unlock() - Could not get charecteristic");
-        return;
+        return false;
     }
 
     tmpCharact->writeValue(this->_key, 6, true);
     this->_needUnlock = false;
+    return true;
 }
 
 char *blind::mac()
@@ -206,7 +238,12 @@ void blind::refresh()
     return;
 #endif
 
-    this->unlock();
+    if (this->unlock() == false) {
+        DEBUG_PRINTLN("blind::refresh(): unable to unlock");
+        return;
+    }
+
+
 
     BLERemoteService *tmpService = this->_pClient->getService(this->_SERVICE_UUID);
     if (tmpService == NULL)

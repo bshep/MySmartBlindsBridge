@@ -35,7 +35,7 @@ private:
     void _writeAngle();
     bool connect();
     void disconnect();
-    void unlock();
+    bool unlock();
 
 public:
     blind(char *mac_addr, byte *key);

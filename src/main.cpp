@@ -2,8 +2,6 @@
 
 #include "main.h"
 
-bool BlindsRefreshNow = true;
-
 static AsyncWebServer webServer(80);
 static AsyncWebServer debugServer(88);
 
@@ -14,7 +12,7 @@ HABinarySensor *chargingSensorList[HA_MAXDEVICES];
 
 int blindCount = 0;
 
-Timer<10> timer;
+Timer<> timer;
 
 String DEBUGTEXT;
 String blindsConfig = "";
@@ -24,6 +22,7 @@ HADevice device;
 HAMqtt mqtt(client, device, HA_MAXDEVICES + 3);
 byte deviceMAC[HA_MACLENGTH];
 
+bool BlindsRefreshNow = false;
 bool BLEScanNow = true;
 scanner *myBLEScanner;
 
@@ -61,7 +60,7 @@ void setup()
     Serial.println("LittleFS Initialized");
   }
 
-  sleep(2);
+  // sleep(2);
   readWifiConfig(wifiSSID, wifiPassphrase, wifiHostname, brokerAddress);
   brokerAddress.toCharArray(cstr_brokerAddress, 64);
   wifiHostname.toCharArray(cstr_hostname, 32);
@@ -89,10 +88,16 @@ void setup()
   BLEDevice::init(cstr_hostname);
 
   webServer.on("/", handle_OnConnect);
-  webServer.on("/refresh", handle_OnRefreshBlinds);
-  webServer.on("/style.css", handle_OnReturnFile);
-  webServer.on("/script.js", handle_OnReturnFile);
-  webServer.on("/scan", handle_OnScan);
+  // webServer.on("/style.css", handle_OnReturnFile);
+  // webServer.on("/script.js", handle_OnReturnFile);
+  webServer.on("/cmd/refresh", handle_Command);
+  webServer.on("/cmd/scan", handle_Command);
+  webServer.on("/cmd/closeAll", handle_Command);
+  webServer.on("/cmd/openAll", handle_Command);
+  webServer.on("/cmd/open", handle_Command);
+  webServer.on("/cmd/close", handle_Command);
+
+  webServer.onNotFound(handle_OnReturnFile);
   webServer.begin();
 
   debugServer.begin();
@@ -109,13 +114,18 @@ void setup()
   mqtt.begin(cstr_brokerAddress);
 
   DEBUG_PRINTLN(WiFi.localIP().toString());
-  DEBUG_PRINTLN("Will now read and connenct to blinds.");
 
+  DEBUG_PRINTLN("Will now scan for BLE Devices.");
   myBLEScanner = new scanner();
   myBLEScanner->RefreshBLEScan();
+  DEBUG_PRINT(" - found ");
+  DEBUG_PRINT(myBLEScanner->foundDevices.getCount());
+  DEBUG_PRINTLN(" devices");
+
+  DEBUG_PRINTLN("Will now read config and connenct to blinds.");
   readBlindsConfig();
 
-  timer.every(1000, onRefreshBlinds);
+  timer.every(1000 * 10, onRefreshBlinds);
   timer.every(1000 * 60 * 60 * 24, onReboot);
   timer.every(1000 * 60, onRefreshBLEScan);
   timer.in(5000, onTurnOffLED);
@@ -136,64 +146,115 @@ bool onReboot(void *args)
 
 void handle_OnRefreshBlinds(AsyncWebServerRequest *request)
 {
-  request->redirect("/");
-
+  DEBUG_PRINTLN("HTTP Request for: " + request->url());
   BlindsRefreshNow = true;
 }
 
-void handle_HTTPArgs(AsyncWebServerRequest *request)
+// void handle_HTTPArgs(AsyncWebServerRequest *request)
+// {
+//   int numArgs = request->args();
+
+//   if (numArgs > 0)
+//   {
+//     DEBUG_PRINTLN("Got some args");
+
+//     String cmd = request->arg("cmd");
+
+//     if (cmd != "")
+//     {
+// Got a cmd
+// if (cmd == "open" || cmd == "close")
+// {
+//   String mac = request->arg("mac"); // Returns empty string if arg does not exist
+//   if (mac == "")
+//   {
+//     return; // return if mac address not specified
+//   }
+//   blind *foundBlind = findBlindByMac(mac.c_str());
+//   if (foundBlind)
+//   {
+//     if (cmd == "open")
+//     {
+//       foundBlind->setAngle(100);
+//     }
+//     else
+//     {
+//       foundBlind->setAngle(200);
+//     }
+//   }
+// }
+
+// if (cmd == "openAll" || cmd == "closeAll")
+// {
+//   for (int i = 0; i < blindCount; i++)
+//   {
+//     if (cmd == "openAll")
+//     {
+//       blindsList[i]->setAngle(100);
+//     }
+//     else
+//     {
+//       blindsList[i]->setAngle(200);
+//     }
+//   }
+// }
+//     }
+//   }
+//   else
+//   {
+//     DEBUG_PRINTLN("Got NO args");
+//   }
+// }
+
+void handle_Command(AsyncWebServerRequest *request)
 {
-  int numArgs = request->args();
+  DEBUG_PRINTLN("HTTP Request for: " + request->url());
 
-  if (numArgs > 0)
+  if (request->url() == "/cmd/closeAll")
   {
-    DEBUG_PRINTLN("Got some args");
-
-    String cmd = request->arg("cmd");
-
-    if (cmd != "")
+    for (int i = 0; i < blindCount; i++)
     {
-      // Got a cmd
-      if (cmd == "open" || cmd == "close")
-      {
-        String mac = request->arg("mac"); // Returns empty string if arg does not exist
-        if (mac == "")
-        {
-          return; // return if mac address not specified
-        }
-        blind *foundBlind = findBlindByMac(mac.c_str());
-        if (foundBlind)
-        {
-          if (cmd == "open")
-          {
-            foundBlind->setAngle(100);
-          }
-          else
-          {
-            foundBlind->setAngle(200);
-          }
-        }
-      }
-
-      if (cmd == "openAll" || cmd == "closeAll")
-      {
-        for (int i = 0; i < blindCount; i++)
-        {
-          if (cmd == "openAll")
-          {
-            blindsList[i]->setAngle(100);
-          }
-          else
-          {
-            blindsList[i]->setAngle(200);
-          }
-        }
-      }
+      blindsList[i]->setAngle(200);
     }
   }
-  else
+
+  if (request->url() == "/cmd/openAll")
   {
-    DEBUG_PRINTLN("Got NO args");
+    for (int i = 0; i < blindCount; i++)
+    {
+      blindsList[i]->setAngle(100);
+    }
+  }
+
+  if (request->url() == "/cmd/scan")
+  {
+    BLEScanNow = true;
+  }
+
+  if (request->url() == "/cmd/refresh")
+  {
+    BlindsRefreshNow = true;
+  }
+
+  if (request->url() == "/cmd/open" || request->url() == "/cmd/close")
+  {
+    String mac = request->arg("mac"); // Returns empty string if arg does not exist
+    if (mac == "")
+    {
+      return; // return if mac address not specified
+    }
+    blind *foundBlind = findBlindByMac(mac.c_str());
+    if (foundBlind)
+    {
+      if (request->url() == "/cmd/open")
+      {
+        foundBlind->setAngle(100);
+      }
+      else
+      {
+        foundBlind->setAngle(200);
+      }
+    }
   }
 }
 
@@ -230,12 +291,12 @@ String handle_OnConnectProcessor(const String &var)
       tmpDevices += "<td>";
       tmpDevices += myblind->getAngle();
       tmpDevices += "</td>";
-      tmpDevices += "<td><a class=\"button\" href=\"/?cmd=open&mac=";
+      tmpDevices += "<td><div class=\"button\" onclick=\"buttonClick(\'/cmd/open?mac=";
       tmpDevices += myblind->mac();
-      tmpDevices += "\">Open</a>";
-      tmpDevices += "<a class=\"button\" href=\"/?cmd=close&mac=";
+      tmpDevices += "')\">Open</div>";
+      tmpDevices += "<div class=\"button\" onclick=\"buttonClick(\'/cmd/close?mac=";
       tmpDevices += myblind->mac();
-      tmpDevices += "\">Close</a></td>";
+      tmpDevices += "')\">Close</div></td>";
 
       tmpDevices += "</tr>";
     }
@@ -278,7 +339,10 @@ String handle_OnConnectProcessor(const String &var)
       tmpDevices += "<td>";
       tmpDevices += tmpDevice.getRSSI();
       tmpDevices += "</td>";
+      tmpDevices += "</tr>";
     }
+    tmpDevices += "</table>";
+
     return F(tmpDevices.c_str());
   }
 
@@ -300,15 +364,14 @@ String handle_OnConnectProcessor(const String &var)
 
 void handle_OnConnect(AsyncWebServerRequest *request)
 {
-  DEBUG_PRINTLN("HTTP Request for: " + request->url());
+  // DEBUG_PRINTLN("HTTP Request for: " + request->url());
 
-  if (request->args() > 0)
-  {
-    handle_HTTPArgs(request);
-    request->redirect("/");
-    return;
-  }
-
+  // if (request->args() > 0)
+  // {
+  //   handle_HTTPArgs(request);
+  //   request->redirect("/");
+  //   return;
+  // }
   request->send(LittleFS, "/index.html", String(), false, handle_OnConnectProcessor);
 }
 
@@ -326,29 +389,20 @@ void handle_OnReturnFile(AsyncWebServerRequest *request)
   }
 }
 
-String readFileIntoString(String filename)
-{
-  String tmpStr = "";
-  File tmpFile = LittleFS.open(filename, "r");
+// String readFileIntoString(String filename)
+// {
+//   String tmpStr = "";
+//   File tmpFile = LittleFS.open(filename, "r");
 
-  while (tmpFile.available())
-  {
-    tmpStr += tmpFile.readString();
-  }
+//   while (tmpFile.available())
+//   {
+//     tmpStr += tmpFile.readString();
+//   }
 
-  tmpFile.close();
+//   tmpFile.close();
 
-  return tmpStr;
-}
-
-void handle_OnScan(AsyncWebServerRequest *request)
-{
-  WebSerial.println("HTTP Request for: " + request->url());
-
-  request->redirect("/");
-
-  BLEScanNow = true;
-}
+//   return tmpStr;
+// }
 
 void onWebSerial_recvMsg(uint8_t *data, size_t len)
 {

@@ -8,10 +8,10 @@
         <h2>Welcome!</h2>
 
         <h3>%DEVICES%</h3>
-        <a class="button" href="/scan">Scan Again</a>
-        <a class="button" href="/refresh">Refresh</a>
-        <a class="button" href="/?cmd=closeAll">Close All</a>
-        <a class="button" href="/?cmd=openAll">Open All</a>
+        <div class="button" onclick="buttonClick('/cmd/scan')">Scan Again</div>
+        <div class="button" onclick="buttonClick('/cmd/refresh')">Refresh</div>
+        <div class="button" onclick="buttonClick('/cmd/closeAll')">Close All</div>
+        <div class="button" onclick="buttonClick('/cmd/openAll')">Open All</div>
 
         <form id="myHostnameForm">Hostname*: <input class="input" type="text" id="hostname" value="%HOSTNAME%"/></form>
         <!-- <a class="button" id="myHostNameButton">Save</a> -->

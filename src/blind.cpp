@@ -27,43 +27,6 @@ const std::string blind::_SENSORS_UUID = "00001651-1212-efde-1600-785feabcd123";
 
 extern scanner *myBLEScanner;
 
-// struct connTaskParams
-// {
-//     BLEClient *pClient;
-//     BLEAddress *pAddr;
-//     bool connected;
-// };
-
-// void vTaskCode(void *params)
-// {
-//     connTaskParams *myParams = (connTaskParams *)params;
-
-//     myParams->pClient->connect(*myParams->pAddr, BLE_ADDR_TYPE_RANDOM);
-//     myParams->connected = true;
-//     vTaskDelete(nullptr); // important line, FreeRTOS will crash.
-// }
-
-// bool doConnect(uint8_t timeout_secs, connTaskParams *params)
-// {
-//     TaskHandle_t hTask;
-//     xTaskCreate(
-//         vTaskCode,
-//         "connect", // name of the task for debugging purposes.
-//         8192,      // stack size
-//         params,    // object passed as void* unused
-//         2,         // priority
-//         &hTask);
-
-//     uint64_t expiration = millis() + timeout_secs * 1000;
-//     while (!params->connected && millis() < expiration)
-//     {
-//         delay(500); // give the connect task a chance to run.
-//         DEBUG_PRINTLN("Waiting for task...")
-//     }
-//     vTaskDelete(hTask);
-//     return params->connected;
-// }
-
 bool isScanned(BLEAddress targetAddr)
 {
     DEBUG_PRINT("isScanned(): Checking address");
@@ -126,14 +89,6 @@ bool blind::connect()
         DEBUG_PRINT("blind::connect() - attempting to connect to: mac - ");
         DEBUG_PRINTLN(this->_mac);
         BLEAddress myAddr = BLEAddress(std::string(this->_mac));
-
-        // {
-        //     connTaskParams connectionParams;
-        //     connectionParams.pClient = this->_pClient;
-        //     connectionParams.pAddr = &myAddr;
-        //     connectionParams.connected = false;
-        //     doConnect(5, &connectionParams);
-        // }
 
         if (isScanned(myAddr))
         {
@@ -228,7 +183,12 @@ byte *blind::key()
 
 char *blind::name()
 {
-    return this->_name;
+    if (this->isConnected())
+    {
+        return this->_name;
+    }
+    else
+        return "DISCONNECTED";
 }
 
 void blind::refresh()
@@ -239,12 +199,11 @@ void blind::refresh()
     return;
 #endif
 
-    if (this->unlock() == false) {
+    if (this->unlock() == false)
+    {
         DEBUG_PRINTLN("blind::refresh(): unable to unlock");
         return;
     }
-
-
 
     BLERemoteService *tmpService = this->_pClient->getService(this->_SERVICE_UUID);
     if (tmpService == NULL)
@@ -305,61 +264,77 @@ void blind::_writeAngle()
         return;
     }
 
-    this->unlock();
-
-    BLERemoteService *tmpService = this->_pClient->getService(this->_SERVICE_UUID);
-    if (tmpService == NULL)
+    if (this->unlock())
     {
-        DEBUG_PRINTLN("blind::_writeAngle() - Could not get service");
-    }
+        BLERemoteService *tmpService = this->_pClient->getService(this->_SERVICE_UUID);
+        if (tmpService == NULL)
+        {
+            DEBUG_PRINTLN("blind::_writeAngle() - Could not get service");
+        }
 
-    BLERemoteCharacteristic *tmpCharact = tmpService->getCharacteristic(this->_ANGLE_UUID);
-    if (tmpCharact == NULL)
+        BLERemoteCharacteristic *tmpCharact = tmpService->getCharacteristic(this->_ANGLE_UUID);
+        if (tmpCharact == NULL)
+        {
+            DEBUG_PRINTLN("blind::_writeAngle() - Could not get charecteristic for ANGLE");
+        }
+        tmpCharact->writeValue((uint8_t)this->_newAngle);
+        this->_angle = _newAngle;
+    }
+    else
     {
-        DEBUG_PRINTLN("blind::_writeAngle() - Could not get charecteristic for ANGLE");
+        DEBUG_PRINTLN("blind::_writeAngle() - Failed Unlock");
     }
-    tmpCharact->writeValue((uint8_t)this->_newAngle);
-    this->_angle = _newAngle;
-
     DEBUG_PRINTLN("blind::_writeAngle() - Exit Function");
 }
 
 void blind::refreshSensors()
 {
-    this->unlock();
 
 #ifdef DISABLE_COMMS
     return;
 #endif
+    if (this->unlock())
+    {
 
-    std::string sensorValue = this->_pClient->getValue(this->_SERVICE_UUID, this->_SENSORS_UUID);
+        std::string sensorValue = this->_pClient->getValue(this->_SERVICE_UUID, this->_SENSORS_UUID);
 
-    this->sensors->parseSensorData((byte *)sensorValue.c_str());
+        this->sensors->parseSensorData((byte *)sensorValue.c_str());
 
-    DEBUG_PRINTLN("Sensors: ");
-    DEBUG_PRINTLN(" - batteryPercentage=" + String(this->sensors->getBatteryPercentage()));
-    DEBUG_PRINTLN(" - _batteryVoltage=" + String(this->sensors->getBatteryVoltage()));
-    DEBUG_PRINTLN(" - _batteryCharge=" + String(this->sensors->getBatteryCharge()));
-    DEBUG_PRINTLN(" - _solarPanelVoltage=" + String(this->sensors->getSolarPanelVoltage()));
-    DEBUG_PRINTLN(" - _interiorTemp=" + String(this->sensors->getInteriorTemp()));
-    DEBUG_PRINTLN(" - _batteryTemp=" + String(this->sensors->getBatteryTemp()));
-    DEBUG_PRINTLN(" - _rawLightValue=" + String(this->sensors->getRawLightValue()));
+        DEBUG_PRINTLN("Sensors: ");
+        DEBUG_PRINTLN(" - batteryPercentage=" + String(this->sensors->getBatteryPercentage()));
+        DEBUG_PRINTLN(" - _batteryVoltage=" + String(this->sensors->getBatteryVoltage()));
+        DEBUG_PRINTLN(" - _batteryCharge=" + String(this->sensors->getBatteryCharge()));
+        DEBUG_PRINTLN(" - _solarPanelVoltage=" + String(this->sensors->getSolarPanelVoltage()));
+        DEBUG_PRINTLN(" - _interiorTemp=" + String(this->sensors->getInteriorTemp()));
+        DEBUG_PRINTLN(" - _batteryTemp=" + String(this->sensors->getBatteryTemp()));
+        DEBUG_PRINTLN(" - _rawLightValue=" + String(this->sensors->getRawLightValue()));
+    }
+    else
+    {
+        DEBUG_PRINTLN("blind::refreshSensors() - Failed Unlock");
+    }
 }
 
 void blind::refreshStatus()
 {
-    this->unlock();
-
 #ifdef DISABLE_COMMS
     return;
 #endif
 
-    std::string statusValue = this->_pClient->getValue(this->_SERVICE_UUID, this->_STATUS_UUID);
+    if (this->unlock())
+    {
 
-    const char *statValueChar = statusValue.c_str();
+        std::string statusValue = this->_pClient->getValue(this->_SERVICE_UUID, this->_STATUS_UUID);
 
-    u_int32_t statusValueLong = (statValueChar[3] << 24) + (statValueChar[2] << 16) + (statValueChar[1] << 8) + statValueChar[0];
-    this->status->updateStatus(statusValueLong);
+        const char *statValueChar = statusValue.c_str();
 
-    DEBUG_PRINTLN("StatusValue: " + String(statusValueLong, 16));
+        u_int32_t statusValueLong = (statValueChar[3] << 24) + (statValueChar[2] << 16) + (statValueChar[1] << 8) + statValueChar[0];
+        this->status->updateStatus(statusValueLong);
+
+        DEBUG_PRINTLN("StatusValue: " + String(statusValueLong, 16));
+    }
+    else
+    {
+        DEBUG_PRINTLN("blind::refreshStatus() - Failed Unlock");
+    }
 }

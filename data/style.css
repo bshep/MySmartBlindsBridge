@@ -22,12 +22,50 @@ h3 {
 .table {
     display: block;
     width: fit-content;
-    background-color: white;
+    /* background-color: white; */
     color: black;
     padding: 13px 30px;
     font-size: 25px;
     margin: 0px auto 35px;
+
+    border-collapse: collapse;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
 }
+
+.table thead tr {
+    background-color: #009879;
+    color: #ffffff;
+    text-align: left;
+}
+
+.table th,
+.table td {
+    padding: 12px 15px;
+}
+
+.table tbody tr {
+    border-bottom: 1px solid #dddddd;
+}
+
+.table tbody tr:nth-of-type(even) {
+    background-color: #f3f3f3;
+}
+
+.table tbody tr:last-of-type {
+    border-bottom: 2px solid #009879;
+}
+
+.table tbody tr.active-row {
+    font-weight: bold;
+    color: #009879;
+}
+
+/* #nearby-devices {
+    position: absolute;
+    right: 0px;
+    top: 0px;
+    background: beige;
+} */
 
 .button {
     display: block;
@@ -131,3 +169,30 @@ p {
 .greenText {
     color: green
 }
+
+/* Style the button that is used to open and close the collapsible content */
+.collapsible {
+    background-color: #eee;
+    color: #444;
+    cursor: pointer;
+    padding: 18px;
+    width: 100%;
+    border: none;
+    text-align: left;
+    outline: none;
+    font-size: 15px;
+  }
+  
+  /* Add a background color to the button if it is clicked on (add the .active class with JS), and when you move the mouse over it (hover) */
+  .active, .collapsible:hover {
+    background-color: #ccc;
+  }
+  
+  /* Style the collapsible content. Note: hidden by default */
+  .collapsible-content {
+    padding: 0 18px;
+    background-color: white;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.2s ease-out;
+  }

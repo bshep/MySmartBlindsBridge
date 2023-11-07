@@ -60,7 +60,6 @@ void setup()
     Serial.println("LittleFS Initialized");
   }
 
-  // sleep(2);
   readWifiConfig(wifiSSID, wifiPassphrase, wifiHostname, brokerAddress);
   brokerAddress.toCharArray(cstr_brokerAddress, 64);
   wifiHostname.toCharArray(cstr_hostname, 32);
@@ -88,8 +87,6 @@ void setup()
   BLEDevice::init(cstr_hostname);
 
   webServer.on("/", handle_OnConnect);
-  // webServer.on("/style.css", handle_OnReturnFile);
-  // webServer.on("/script.js", handle_OnReturnFile);
   webServer.on("/cmd/refresh", handle_Command);
   webServer.on("/cmd/scan", handle_Command);
   webServer.on("/cmd/closeAll", handle_Command);
@@ -129,10 +126,12 @@ void setup()
   timer.every(1000 * 60 * 60 * 24, onReboot);
   timer.every(1000 * 60, onRefreshBLEScan);
   timer.in(5000, onTurnOffLED);
+  ums3.setPixelColor(0, 0, 255);
 }
 
 void loop()
 {
+  ums3.setPixelColor(0, 255, 255);
   timer.tick();
   ArduinoOTA.handle();
   mqtt.loop();
@@ -149,62 +148,6 @@ void handle_OnRefreshBlinds(AsyncWebServerRequest *request)
   DEBUG_PRINTLN("HTTP Request for: " + request->url());
   BlindsRefreshNow = true;
 }
-
-// void handle_HTTPArgs(AsyncWebServerRequest *request)
-// {
-//   int numArgs = request->args();
-
-//   if (numArgs > 0)
-//   {
-//     DEBUG_PRINTLN("Got some args");
-
-//     String cmd = request->arg("cmd");
-
-//     if (cmd != "")
-//     {
-// Got a cmd
-// if (cmd == "open" || cmd == "close")
-// {
-//   String mac = request->arg("mac"); // Returns empty string if arg does not exist
-//   if (mac == "")
-//   {
-//     return; // return if mac address not specified
-//   }
-//   blind *foundBlind = findBlindByMac(mac.c_str());
-//   if (foundBlind)
-//   {
-//     if (cmd == "open")
-//     {
-//       foundBlind->setAngle(100);
-//     }
-//     else
-//     {
-//       foundBlind->setAngle(200);
-//     }
-//   }
-// }
-
-// if (cmd == "openAll" || cmd == "closeAll")
-// {
-//   for (int i = 0; i < blindCount; i++)
-//   {
-//     if (cmd == "openAll")
-//     {
-//       blindsList[i]->setAngle(100);
-//     }
-//     else
-//     {
-//       blindsList[i]->setAngle(200);
-//     }
-//   }
-// }
-//     }
-//   }
-//   else
-//   {
-//     DEBUG_PRINTLN("Got NO args");
-//   }
-// }
 
 void handle_Command(AsyncWebServerRequest *request)
 {
@@ -274,9 +217,13 @@ String handle_OnConnectProcessor(const String &var)
   {
     String tmpDevices;
     blind *myblind;
-    tmpDevices += "<h2>Total Found ";
+    tmpDevices += "<div id=\"registered-blinds\">";
+    tmpDevices += "<div class=\"collapsible\">";
+    tmpDevices += "<h2>Registered Blinds - Count:";
     tmpDevices += blindCount;
-    tmpDevices += " </h2>";
+    tmpDevices += "</h2></div>";
+
+    tmpDevices += "<div class=\"collapsible-content\">";
     tmpDevices += "<table class=\"table\">";
     tmpDevices += "<thead><tr><td>Name</td><td>Angle</td><td>Controls</td></tr></thead>";
 
@@ -300,7 +247,7 @@ String handle_OnConnectProcessor(const String &var)
 
       tmpDevices += "</tr>";
     }
-    tmpDevices += "</table>";
+    tmpDevices += "</table></div></div>";
 
     return F(tmpDevices.c_str());
   }
@@ -313,11 +260,13 @@ String handle_OnConnectProcessor(const String &var)
   if (var == "BLESCANRESULTS")
   {
     String tmpDevices;
-
+    tmpDevices += "<div id=\"nearby-devices\">";
+    tmpDevices += "<div class=\"collapsible\"";
     tmpDevices += "<h2>Nearby Devices - ";
     tmpDevices += myBLEScanner->foundDevices.getCount();
-    tmpDevices += "</h2>";
+    tmpDevices += "</h2></div>";
 
+    tmpDevices += "<div class=\"collapsible-content\">";
     tmpDevices += "<table class=\"table\">";
     tmpDevices += "<thead><tr>";
     tmpDevices += "<td>Address</td>";
@@ -341,7 +290,7 @@ String handle_OnConnectProcessor(const String &var)
       tmpDevices += "</td>";
       tmpDevices += "</tr>";
     }
-    tmpDevices += "</table>";
+    tmpDevices += "</table></div></div>";
 
     return F(tmpDevices.c_str());
   }
@@ -364,14 +313,6 @@ String handle_OnConnectProcessor(const String &var)
 
 void handle_OnConnect(AsyncWebServerRequest *request)
 {
-  // DEBUG_PRINTLN("HTTP Request for: " + request->url());
-
-  // if (request->args() > 0)
-  // {
-  //   handle_HTTPArgs(request);
-  //   request->redirect("/");
-  //   return;
-  // }
   request->send(LittleFS, "/index.html", String(), false, handle_OnConnectProcessor);
 }
 
@@ -388,21 +329,6 @@ void handle_OnReturnFile(AsyncWebServerRequest *request)
     request->send(404, "text/plain", "404 - File Not found" + request->url());
   }
 }
-
-// String readFileIntoString(String filename)
-// {
-//   String tmpStr = "";
-//   File tmpFile = LittleFS.open(filename, "r");
-
-//   while (tmpFile.available())
-//   {
-//     tmpStr += tmpFile.readString();
-//   }
-
-//   tmpFile.close();
-
-//   return tmpStr;
-// }
 
 void onWebSerial_recvMsg(uint8_t *data, size_t len)
 {

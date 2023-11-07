@@ -1,33 +1,42 @@
 <html>
-    <head>
-        <title>MySmartBlinds BLE Bridge</title>
-        <link rel="stylesheet" href="/style.css">
+  <head>
+    <title>MySmartBlinds BLE Bridge</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <h2>Welcome!</h2>
 
-    </head>
-    <body>
-        <h2>Welcome!</h2>
+    %DEVICES% %BLESCANRESULTS%
 
-        <h3>%DEVICES%</h3>
-        <div class="button" onclick="buttonClick('/cmd/scan')">Scan Again</div>
-        <div class="button" onclick="buttonClick('/cmd/refresh')">Refresh</div>
-        <div class="button" onclick="buttonClick('/cmd/closeAll')">Close All</div>
-        <div class="button" onclick="buttonClick('/cmd/openAll')">Open All</div>
+    <div class="collapsible">Controls</div>
+    <div class="collapsible-content">
+      <div class="button" onclick="buttonClick('/cmd/scan')">Scan Again</div>
+      <div class="button" onclick="buttonClick('/cmd/refresh')">Refresh</div>
+      <div class="button" onclick="buttonClick('/cmd/closeAll')">Close All</div>
+      <div class="button" onclick="buttonClick('/cmd/openAll')">Open All</div>
+      <div class="button" onclick="buttonClick('/cmd/reboot')">Reboot</div>
+    </div>
 
-        <form id="myHostnameForm">Hostname*: <input class="input" type="text" id="hostname" value="%HOSTNAME%"/></form>
-        <!-- <a class="button" id="myHostNameButton">Save</a> -->
+    <div class="collapsible">Configuration</div>
+    <div class="collapsible-content">
+      <form id="myHostnameForm">
+        Hostname*:
+        <input class="input" type="text" id="hostname" value="%HOSTNAME%" />
+      </form>
+      <!-- <a class="button" id="myHostNameButton">Save</a> -->
 
-        <form id="myBrokerAddressForm">Broker Address*: <input class="input" type="text" id="brokerAddress" value="%BROKERADDRESS%"" /></form>
-        <!-- <a class="button" id="myBrokerAddressButton">Save</a> -->
-    
-        Blinds Config (Format: encodedmac:encodedkey):
-        <textarea class="textarea" id="myBlindsConfig" rows="6" cols="30">%BLINDSCONFIG%</textarea>
-        <!-- <a class="button" id="myBlindsConfigButton">Save</a> -->
+      <form id="myBrokerAddressForm">
+        Broker Address*: <input class="input" type="text" id="brokerAddress"
+        value="%BROKERADDRESS%"" />
+      </form>
+      <!-- <a class="button" id="myBrokerAddressButton">Save</a> -->
 
-
-        <!-- <a class="button" href="/reboot">Reboot</a> -->
-        <!-- <p>Items with * require reboot for changes to take effect.</p> -->
-        %BLESCANRESULTS%
-        <h2>%DEBUGTEXT%</h2>
-        <script src="/script.js"></script>
-    </body>
+      Blinds Config (Format: encodedmac:encodedkey):
+      <textarea class="textarea" id="myBlindsConfig" rows="6" cols="30">%BLINDSCONFIG%</textarea>
+      <!-- <a class="button" id="myBlindsConfigButton">Save</a> -->
+    </div>
+    <!-- <a class="button" href="/reboot">Reboot</a> -->
+    <h2>%DEBUGTEXT%</h2>
+    <script src="/script.js"></script>
+  </body>
 </html>

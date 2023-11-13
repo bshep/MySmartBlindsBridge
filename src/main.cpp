@@ -215,41 +215,7 @@ String handle_OnConnectProcessor(const String &var)
 
   if (var == "DEVICES")
   {
-    String tmpDevices;
-    blind *myblind;
-    tmpDevices += "<div id=\"registered-blinds\">";
-    tmpDevices += "<div class=\"collapsible\">";
-    tmpDevices += "<h2>Registered Blinds - Count:";
-    tmpDevices += blindCount;
-    tmpDevices += "</h2></div>";
-
-    tmpDevices += "<div class=\"collapsible-content\">";
-    tmpDevices += "<table class=\"table\">";
-    tmpDevices += "<thead><tr><td>Name</td><td>Angle</td><td>Controls</td></tr></thead>";
-
-    for (int i = 0; i < blindCount; i++)
-    {
-      myblind = blindsList[i];
-
-      tmpDevices += "<tr>";
-      tmpDevices += "<td>";
-      tmpDevices += myblind->name();
-      tmpDevices += "</td>";
-      tmpDevices += "<td>";
-      tmpDevices += myblind->getAngle();
-      tmpDevices += "</td>";
-      tmpDevices += "<td><div class=\"button\" onclick=\"buttonClick(\'/cmd/open?mac=";
-      tmpDevices += myblind->mac();
-      tmpDevices += "')\">Open</div>";
-      tmpDevices += "<div class=\"button\" onclick=\"buttonClick(\'/cmd/close?mac=";
-      tmpDevices += myblind->mac();
-      tmpDevices += "')\">Close</div></td>";
-
-      tmpDevices += "</tr>";
-    }
-    tmpDevices += "</table></div></div>";
-
-    return F(tmpDevices.c_str());
+    return handle_OnConnectProcessor_devices(var);
   }
 
   if (var == "BLINDSCONFIG")
@@ -259,40 +225,7 @@ String handle_OnConnectProcessor(const String &var)
 
   if (var == "BLESCANRESULTS")
   {
-    String tmpDevices;
-    tmpDevices += "<div id=\"nearby-devices\">";
-    tmpDevices += "<div class=\"collapsible\"";
-    tmpDevices += "<h2>Nearby Devices - ";
-    tmpDevices += myBLEScanner->foundDevices.getCount();
-    tmpDevices += "</h2></div>";
-
-    tmpDevices += "<div class=\"collapsible-content\">";
-    tmpDevices += "<table class=\"table\">";
-    tmpDevices += "<thead><tr>";
-    tmpDevices += "<td>Address</td>";
-    tmpDevices += "<td>Name</td>";
-    tmpDevices += "<td>RSSI</td>";
-    tmpDevices += "</tr></thead>";
-    tmpDevices += "";
-
-    for (int a = 0; a < myBLEScanner->foundDevices.getCount(); a++)
-    {
-      BLEAdvertisedDevice tmpDevice = myBLEScanner->foundDevices.getDevice(a);
-      tmpDevices += "<tr>";
-      tmpDevices += "<td>";
-      tmpDevices += tmpDevice.getAddress().toString().c_str();
-      tmpDevices += "</td>";
-      tmpDevices += "<td>";
-      tmpDevices += tmpDevice.getName().c_str();
-      tmpDevices += "</td>";
-      tmpDevices += "<td>";
-      tmpDevices += tmpDevice.getRSSI();
-      tmpDevices += "</td>";
-      tmpDevices += "</tr>";
-    }
-    tmpDevices += "</table></div></div>";
-
-    return F(tmpDevices.c_str());
+    return handle_OnConnectProcessor_scanresults(var);
   }
 
   if (var == "DEBUGTEXT")
@@ -309,6 +242,83 @@ String handle_OnConnectProcessor(const String &var)
   }
 
   return String();
+}
+
+String handle_OnConnectProcessor_devices(const String &var)
+{
+  String tmpDevices;
+  blind *myblind;
+  tmpDevices += "<div id=\"registered-blinds\">";
+  tmpDevices += "<div class=\"collapsible\">";
+  tmpDevices += "<h2>Registered Blinds - Count:";
+  tmpDevices += blindCount;
+  tmpDevices += "</h2></div>";
+
+  tmpDevices += "<div class=\"collapsible-content\">";
+  tmpDevices += "<table class=\"table\">";
+  tmpDevices += "<thead><tr><td>Name</td><td>Angle</td><td>Controls</td></tr></thead>";
+
+  for (int i = 0; i < blindCount; i++)
+  {
+    myblind = blindsList[i];
+
+    tmpDevices += "<tr>";
+    tmpDevices += "<td>";
+    tmpDevices += myblind->name();
+    tmpDevices += "</td>";
+    tmpDevices += "<td>";
+    tmpDevices += myblind->getAngle();
+    tmpDevices += "</td>";
+    tmpDevices += "<td><div class=\"button\" onclick=\"buttonClick(\'/cmd/open?mac=";
+    tmpDevices += myblind->mac();
+    tmpDevices += "')\">Open</div>";
+    tmpDevices += "<div class=\"button\" onclick=\"buttonClick(\'/cmd/close?mac=";
+    tmpDevices += myblind->mac();
+    tmpDevices += "')\">Close</div></td>";
+
+    tmpDevices += "</tr>";
+  }
+  tmpDevices += "</table></div></div>";
+
+  return F(tmpDevices.c_str());
+}
+
+String handle_OnConnectProcessor_scanresults(const String &var)
+{
+  String tmpDevices;
+  tmpDevices += "<div id=\"nearby-devices\">";
+  tmpDevices += "<div class=\"collapsible\"";
+  tmpDevices += "<h2>Nearby Devices - ";
+  tmpDevices += myBLEScanner->foundDevices.getCount();
+  tmpDevices += "</h2></div>";
+
+  tmpDevices += "<div class=\"collapsible-content\">";
+  tmpDevices += "<table class=\"table\">";
+  tmpDevices += "<thead><tr>";
+  tmpDevices += "<td>Address</td>";
+  tmpDevices += "<td>Name</td>";
+  tmpDevices += "<td>RSSI</td>";
+  tmpDevices += "</tr></thead>";
+  tmpDevices += "";
+
+  for (int a = 0; a < myBLEScanner->foundDevices.getCount(); a++)
+  {
+    BLEAdvertisedDevice tmpDevice = myBLEScanner->foundDevices.getDevice(a);
+    tmpDevices += "<tr>";
+    tmpDevices += "<td>";
+    tmpDevices += tmpDevice.getAddress().toString().c_str();
+    tmpDevices += "</td>";
+    tmpDevices += "<td>";
+    tmpDevices += tmpDevice.getName().c_str();
+    tmpDevices += "</td>";
+    tmpDevices += "<td>";
+    tmpDevices += tmpDevice.getRSSI();
+    tmpDevices += "</td>";
+    tmpDevices += "</tr>";
+  }
+  tmpDevices += "</table></div></div>";
+
+  return F(tmpDevices.c_str());
 }
 
 void handle_OnConnect(AsyncWebServerRequest *request)

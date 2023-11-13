@@ -45,5 +45,9 @@ void handle_OnConnect(AsyncWebServerRequest *request);
 void handle_Command(AsyncWebServerRequest *request);
 void handle_OnReturnFile(AsyncWebServerRequest *request);
 
+String handle_OnConnectProcessor(const String &var);
+String handle_OnConnectProcessor_devices(const String &var);
+String handle_OnConnectProcessor_scanresults(const String &var);
+
 void onWebSerial_recvMsg(uint8_t *data, size_t len);
 blind *findBlindByMac(const char *mac);

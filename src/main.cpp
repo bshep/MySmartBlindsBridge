@@ -153,22 +153,6 @@ void handle_Command(AsyncWebServerRequest *request)
 {
   DEBUG_PRINTLN("HTTP Request for: " + request->url());
 
-  if (request->url() == "/cmd/closeAll")
-  {
-    for (int i = 0; i < blindCount; i++)
-    {
-      blindsList[i]->setAngle(200);
-    }
-  }
-
-  if (request->url() == "/cmd/openAll")
-  {
-    for (int i = 0; i < blindCount; i++)
-    {
-      blindsList[i]->setAngle(100);
-    }
-  }
-
   if (request->url() == "/cmd/scan")
   {
     BLEScanNow = true;
@@ -182,20 +166,36 @@ void handle_Command(AsyncWebServerRequest *request)
   if (request->url() == "/cmd/open" || request->url() == "/cmd/close")
   {
     String mac = request->arg("mac"); // Returns empty string if arg does not exist
+    int targetAngle = 100;            // Default is to open blinds
+
+    if (request->url() == "/cmd/close")
+    {
+      targetAngle = 200;
+    }
+
+    DEBUG_PRINTLN(" - target angle: " + targetAngle);
+
     if (mac == "")
     {
+      DEBUG_PRINTLN(" - no mac specified, returning without changing anything");
       return; // return if mac address not specified
     }
-    blind *foundBlind = findBlindByMac(mac.c_str());
-    if (foundBlind)
+    else if (mac == "all")
     {
-      if (request->url() == "/cmd/open")
+      DEBUG_PRINTLN(" - mac = all, changing all blinds");
+      for (int i = 0; i < blindCount; i++)
       {
-        foundBlind->setAngle(100);
+        blindsList[i]->setAngle(targetAngle);
       }
-      else
+    }
+    else
+    {
+      DEBUG_PRINTLN(" - mac = " + mac);
+      blind *foundBlind = findBlindByMac(mac.c_str());
+      if (foundBlind)
       {
-        foundBlind->setAngle(200);
+        DEBUG_PRINTLN(" - found blind, sending command ");
+        foundBlind->setAngle(targetAngle);
       }
     }
   }

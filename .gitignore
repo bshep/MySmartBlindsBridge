@@ -11,3 +11,4 @@ src/config_info.txt
 .DS_Store
 data/*.disabled
 .version_no_increment
+lib/home-assistant-integration.tgz

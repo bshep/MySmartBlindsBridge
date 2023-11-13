@@ -198,7 +198,7 @@ void readBlindsConfig()
                 coverList[blindCount] = new HACover(deviceID, HACover::PositionFeature);
 
                 coverList[blindCount]->onCommand(onCoverCommand);
-                coverList[blindCount]->onPosition(onCoverPosition);
+                // coverList[blindCount]->onPosition(onCoverPosition);
 
                 coverList[blindCount]->setIcon("mdi:blinds-horizontal");
                 coverList[blindCount]->setName(blindsList[blindCount]->name());
